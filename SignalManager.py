@@ -5,13 +5,12 @@ import mne
 import numpy as np
 import gc
 import mne.time_frequency as mtf
-from andyClasses.smooth import smooth
 import matplotlib.pyplot as plt
 
-class NewBrain:
-    #This class manages EEG (GRID) signals in edf,fif,or hd5 format (note all files are converted to hf5)
-    #It makes extensive use of pandas to represent EEG time series and events logs
-    #requirements - pandas
+class SignalManager:
+    #This class manages GRID signals in edf,fif,or hd5 format (note all files are converted to hf5)
+    #It makes extensive use of pandas to represent time series and events logs
+    #requirements - pandas, numpy,matplotlib
     #             - mne (utility functions)
     #             - matplotlib (utility functions/plotting)
     
@@ -534,63 +533,7 @@ def mask_inter_block_signal(grid,signal=None):
         off = grid.time_to_index(off)
         mask[on:off] = 1
     return mask*signal
-    
-def filter_signal(grid,signal=None,window_len=100,window='hanning'):
-    #Filters a signal with hanning specified type of window
-    #signal - signal to filter
-    #window_length - window length
-    #window - type of window to use
-    
-    signal = smooth(signal, window_len = window_len, window = window)
-    return pd.Series(signal[:len(grid.times())],index=grid.times())
-     
-def threshold_crossings(grid,sig=None,events=None,thresh=None,channel=None,tol=0):
-    #Finds the up and down crossings in the signal
-    #sig - signal to be thresholded
-    #thresh - the threshold for a crossing to occur
-    #channel - channel in the signal to be used
-    #boost - Will polarise the signal (i.e Vx > 0 -> x = 1)
-        
-    if sig is None:
-        if channel is not None:
-            sig = grid.wd()[channel]
-        else:
-            sig = grid.wd()['C127']
-        
-    if thresh is None:
-        thresh = sig.mean()
-        print 'Using '+str(thresh)+' as threshold'
-        
-    if events is None:
-        events = grid.event_matrix()                  
-        
-    up_crosses = np.array([])
-    down_crosses = np.array([])
-
-    #plt.figure()
-    #plt.hold(True)
-    for (on,off) in events.values:
-        signal = grid.splice(sig, times=[on-tol[0],off+tol[1]])
-        #plt.plot(signal)
-        ##all points above threshold 
-        above = np.where(signal>=thresh)[0]
-        ##if point one step back is below threshold, its an upcrossing: make sure not to include negative indices
-        indices = above-1  
-        up_cross = above[np.where(signal[indices] < thresh)[0]]+grid.time_to_index(on)
-        
-        ##if point one step ahead is below threshold, its a down-crossing: make sure not to go out of bounds
-        indices = np.asarray(above)+1
-        L = len(signal)
-        indices = indices[indices < L]
-        down_cross = above[np.where(signal[indices] < thresh)[0]]+grid.time_to_index(on)
-        up_crosses = np.hstack((up_crosses,up_cross))
-        down_crosses = np.hstack((down_crosses,down_cross))
-            
-    print 'Found '+str(len(up_crosses))+' up crossings and '+str(len(down_crosses))+' down crossings'
-    up_crosses.sort()
-    down_crosses.sort()
-    return up_crosses, down_crosses
-
+ 
 
 def show_events_on_chan(grid,chan,eventCodes,colours=None):
 #Will highlight event points in a given channel
