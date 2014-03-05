@@ -8,7 +8,7 @@ import mne.time_frequency as mtf
 import matplotlib.pyplot as plt
 
 class SignalManager:
-    #This class manages GRID signals in edf,fif,or hd5 format (note all files are converted to hf5)
+    #This class manages GRID signals in edf,fif,or hd5 format (note all files are converted to hd5)
     #It makes extensive use of pandas to represent time series and events logs
     #requirements - pandas, numpy,matplotlib
     #             - mne (utility functions)
