@@ -9,7 +9,7 @@ Channel data is taken from from .edf, .fiff, and .hd5 formats. Log/event data is
 
 Notes:
 
-- While effort was made to keep this utilty general, it was written with a specific project in mind. However, it should still be straighforward to adapt. 
+- While some effort was made to keep this code general, it was ultimately written with a specific project in mind. However, I hope it may provide some use and it should still be straightforward to adapt. 
 
 ----------------------------------------
 
