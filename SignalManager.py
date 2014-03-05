@@ -1,7 +1,6 @@
 import pandas as pd
 import glob
 import os
-import mne
 import numpy as np
 import gc
 import mne.time_frequency as mtf
@@ -24,26 +23,24 @@ class SignalManager:
     __eventskeys = None #Codes for events in log
     __currentMeanCalcChans = None #Channels used to calculate current mean
     __currentMeanApplyChans = None #Channels means were applied to
-    __fs = None
     
     ###############Private Methods##########################
     
     
-    def __init__(self,fs,base_file_name=None,log_file=None,offsets=None,new_log_out=False,eventsKey=None):
-        #Initialiser takes the path of the EEG data
-        #Can also set the event matrix or generate it from a psychopy log path
+    def __init__(self,base_file_name=None,log_file=None,offsets=None,new_log_out=False,eventsKey=None):
+        #Initialiser takes the path of the signal data
+        #Can also set the event matrix or generate it from a log path
         #
-        #Requires : base_file_name - the path and name of the EEG data with no file extension
-        #Optional : log_file - path to psychopy log file of events
-        #         : offsets : if a log file has been provided, offsets is a path to a file containing appropriate block offsets
+        #Requires : base_file_name - the path and name of the signal data with no file extension
+        #Optional : log_file - path to log file of events
+        #         : offsets : if a log file has been provided, startimes is a path to a file containing appropriate offets for each block of events (if required - often useful for alignment)
         #         : new_log_out - if Offsets is specified then new_log_out is a Boolean value if the corrected file is to be output
         
-        self.__fs = fs 
         self.__base_file_name = base_file_name
         self.__load_data__()      
         
         if eventsKey is None:
-            eventsKey = {'longOn':0,'longOff':1,'firstFlick':2,'secondFlick':3,'isi1':8,'isi2':9,'quiz':6,'feedback':7,'isi3':5}
+            eventsKey = {'_':0,'blockStart':1}
         self.set_eventsKey(eventsKey)
         
         #Check for log file to create event matrix
@@ -107,16 +104,13 @@ class SignalManager:
         print 'Extracting data from .fif'
         data,time_stamps = raw[1:,:raw.last_samp]
         ch_names = raw.ch_names[1:]
-        #fs = raw.info['sfreq']
-        fs = self.__fs
+        fs = raw.info['sfreq']
         raw.close()
-        print fs
-        times = pd.TimeSeries(np.round(np.arange(len(time_stamps))/float(fs),5))
-        self.save_hdf(data,times,ch_names,np.array([self.__fs]),self.base_file_name())
+        self.save_hdf(data,time_stamps,ch_names,np.array(fs,self.base_file_name())
         self.__open_hdf5__()
 
     def __create_events_matrix__(self):
-        #Creates a Dataframe with index=EEG times, columns=EEG channels
+        #Creates a Dataframe with index=data timestamps times, columns=signal channels
         print "Generating event matrix"
         events = pd.read_csv(self.__log_file,delimiter='\t')
         print 'Found columns:'+str(events.columns)
@@ -129,12 +123,12 @@ class SignalManager:
 
     def __find_blocks__(self):
         #Finds the on and off times of blocks
-        #Note: Blocks are defined as starting at the beginning of the long off pulse
+        #Note: Blocks are defined as starting at event types blockStart(event id 1)
         
         print "Finding blocks"
         print '\tCalculating block indices'
         em = self.event_matrix()
-        blockStartIndices = em[em['event.code'] == self.__eventskey['longOff']].index #First long off pulse in each block
+        blockStartIndices = em[em['event.code'] == self.__eventskey['blockStart']].index #Start of each block
 
         blockEndIndices = blockStartIndices
         blockEndIndices = blockEndIndices[1:].values - 2 #Remove the first pulse and shift to become last pulse in each preceding block
@@ -169,7 +163,7 @@ class SignalManager:
     @staticmethod
     def save_hdf(data,times,cnames,fs,base_file_name):
         #Takes raw data and saves to HD5
-        #data - raw EEG data
+        #data - raw signal data
         #cnames - channel names
         #base_file_name - base file name
         #fs - sample rate of data
@@ -198,7 +192,7 @@ class SignalManager:
         #params sig - the raw signal to be added
         #       name - name of the new channel
         #       addToWd - add this channel to the working data
-        #       mean - 'global' or 'local' 
+        #       mean - 'global' or 'local' (i.e use all channels or only those in the working data set)
         
         if name not in self.channels():
             newData = self.data()
@@ -379,7 +373,7 @@ class SignalManager:
             
     def set_log_file(self,log,offsets=None,new_log_out=False):
         #Sets the psychopy log file
-        #Required: log - path to psychopy log file
+        #Required: log - path to log file
         #Optional: offsets - path to file contains offsets of block times
         #        : new_log_out - Boolean value if the corrected file is to be output
         print 'Saving log file'
@@ -447,11 +441,11 @@ class SignalManager:
     
 #######Utility Functions##############
 def photodiode_signal(grid):
-#Generates a photodiode signal from the log file (useful for checking alignment)
+#Generates a photodiode signal from the log file (useful for checking alignment with some independent signal)
     
     #Get all white pulse events
     em = grid.event_matrix()
-    em = em[em['event.code'] != grid.eventsKey()['longOn']]
+    em = em[em['event.code'] != grid.eventsKey()['_']]
     diodeSignal = pd.Series(np.zeros(len(grid.times())),index=grid.times())
     
     #Set all diode pulses on
@@ -461,67 +455,8 @@ def photodiode_signal(grid):
     return pd.Series(diodeSignal,index=grid.times())
     
 
-def calculate_average(grid,events,norms=None,chans=None):
-        
-        
-    if chans is None:
-        chans = grid.wc()
-    if norms is not None:
-        if len(norms) != len(events):
-            print 'Number of events and baselines is not equal'
-            return
-        norms.columns = ['baseline.on','baseline.off']
-               
-    maxtimediff = (events['pulse.off']-events['pulse.on']).max()
-    maxtimepoints =  round(maxtimediff*grid.fs())+1
-    data = grid.wd()
-        
-    avrg = np.zeros([len(chans),maxtimepoints])
-        
-    for j,chan in enumerate(chans):
-        print 'Processing channel '+chan
-        counter = np.zeros(maxtimepoints)
-        for i,(on,off) in enumerate(events[['pulse.on','pulse.off']].values):
-            sig = grid.splice(data[chan], times=[on,off])
-            bl = norms.iloc[i].values
-            bl = grid.splice(data[chan],times=[bl[0],bl[1]])
-            sig -= bl[:len(sig)].mean()               
-            avrg[j,:len(sig)] += sig
-            counter[:len(sig)] += np.ones(len(sig))
-            avrg[j,:]/=counter
-    return avrg
     
-    
-def normSignal(grid,frequencies = None,nc=None,dec=None,events=None):
-    #Returns normalised power spectrums for events (using morlet wavelets) [n_epochs,n_channels,n_frequencies]
-    #frequencies - morlet frequencies
-    #nc - number of cycles
-    #dec - decimation
-    #events - events to find power of
-    
-    if frequencies is None:
-        frequencies = np.arange(1,101)
-    if nc is None:
-        nc = 0.12*np.arange(1,len(frequencies)+1) #Linear formula [Chan,Baker et al. JNS 2011]
-        print nc
-    if dec is None:
-        dec = 1
-    if events is None:
-        events=grid.event_matrix()
-        events = events[events['event.code']==5] #Use ISIs as baseline
-     
-    #Pre allocate power matrix for efficiency
-    pows = np.zeros([len(events),len(grid.wc()),len(frequencies)])
-        
-    for j,chan in enumerate(grid.wc()):
-        for i,(on,off) in enumerate(events[['pulse.on','pulse.off']].values):
-            print 'Normalising power on channel '+chan+' baseline event '+str(i+1)+'/'+str(len(events))
-            data = grid.splice(grid.wd()[chan],times=[on,off])[None,None,:]
-            data = np.vstack([data,data]) #mne doesn't allow only 1 event so duplicate the same event (which will then be averaged)
-            p,phase=mtf.induced_power(data, Fs=grid.fs(), frequencies=frequencies, use_fft=False, n_cycles=nc, decim=dec, n_jobs=1,normFreqs=None)
-            pows[i,j,:]=p.mean(axis=2).squeeze() #Take average across time for each frequency
-    return pows
-    
+
 def mask_inter_block_signal(grid,signal=None):
     #Returns a zero masked signal (inter-block set to 0)        
     #signal - signal to mask
@@ -537,7 +472,7 @@ def mask_inter_block_signal(grid,signal=None):
 
 def show_events_on_chan(grid,chan,eventCodes,colours=None):
 #Will highlight event points in a given channel
-#Grid - EEG set to use use
+#Grid - Signal set to use use
 #chan - channel to highlight points from
 #eventCodes - events to use
 #colours - colours to highlight respective event codes
