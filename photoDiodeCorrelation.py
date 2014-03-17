@@ -29,5 +29,3 @@ plt.hold(True)
 plt.plot(a[2000000:])
 plt.plot()
 plt.show()
-
-#cProfile.run('pd()','photoDiodeCorrelation2.profile')
