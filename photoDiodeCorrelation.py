@@ -5,7 +5,7 @@ from Grid import Grid
 from GRID import show_events_on_chan,photodiode_signal
 import cProfile
 
-#Script to check that events are aligned with some independent measurement (e.g pulsing photodiode in this case)
+#Script to check that events are aligned with some independent measurement
 #This is useful for checking that log times match with the correct points in the signal
 #Outputs a plot showing the independent signal and interesting event times
 
