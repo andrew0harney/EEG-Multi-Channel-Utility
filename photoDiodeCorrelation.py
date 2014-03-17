@@ -2,8 +2,8 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from Grid import Grid
-from GRID import show_events_on_chan,photodiode_signal
-import cProfile
+from Grid import show_events_on_chan,photodiode_signal
+
 
 #Script to check that events are aligned with some independent measurement
 #This is useful for checking that log times match with the correct points in the signal
