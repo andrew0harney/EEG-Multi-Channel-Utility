@@ -18,9 +18,10 @@ grid = SignalManager(data_path,log_file=log_path)
 #
 print 'Generating'
 wanted_events = [2,3]
+colours = ['r','b']
 
 indpntSignal = photodiode_signal(grid)
-#show_events_on_chan(grid,'C127',wanted_events,colours=event_colours)
+#show_events_on_chan(grid,'C127',wanted_events,colours=event_colours) Would also highlight those events
 print 'Plotting'
 a = grid.data(columns=['C127'])
 plt.plot(indpntSignal)
