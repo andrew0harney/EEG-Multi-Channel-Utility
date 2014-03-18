@@ -477,6 +477,8 @@ def show_events_on_chan(grid,chan,eventCodes,colours=None):
 #eventCodes - events to use
 #colours - colours to highlight respective event codes
 
+
+
     #Plot the base signal
     signal = grid.data()[chan]
     plt.plot(signal)    
@@ -488,7 +490,7 @@ def show_events_on_chan(grid,chan,eventCodes,colours=None):
     #For each event type highlight the appropriate region in the signal
     em = grid.event_matrix()
     for i,event in enumerate(eventCodes):
-        highlight = em[em['event.code']==event]
+        highlight = em[em['event.code']==2] #UPDATE : take function handle for acceptability criteria 
         blockOnIx = highlight[['pulse.on','pulse.off']].apply(lambda x: [grid.time_to_index(x['pulse.on']), grid.time_to_index(x["pulse.off"])],axis=1)
         blockOnIx.apply(lambda x: plt.axvspan(x['pulse.on'], x["pulse.off"], facecolor=colours[i%len(colours)], alpha=0.5),axis=1)
     plt.title('Psychopy/EEG line-up')
