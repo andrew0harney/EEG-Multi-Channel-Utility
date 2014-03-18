@@ -23,7 +23,7 @@ colours = ['r','b']
 indpntSignal = photodiode_signal(grid)
 #show_events_on_chan(grid,'C127',wanted_events,colours=event_colours) Would also highlight those events
 print 'Plotting'
-a = grid.data(columns=['C127'])
+a = grid.data(columns=['DiodeChannelName'])
 plt.plot(indpntSignal)
 plt.hold(True)
 plt.plot(a)
