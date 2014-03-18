@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from Grid import Grid
+from SignalManager import SignalManager
 from matplotlib.backends.backend_pdf import PdfPages
 
 #This script produces histograms of channel powers for all interesting event periods
@@ -11,7 +11,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 data_path = ##PATH TO DATA
 log_path =  #PATH TO LOG
 
-grid = NewBrain(data_path,log_file=log_path)
+grid = SignalManager(data_path,log_file=log_path)
 baseChannels = [chan for chan in grid.channels()]
 grid.set_wd(channels=baseChannels)
 
