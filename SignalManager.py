@@ -50,7 +50,7 @@ class SignalManager:
         if log_file:
             self.set_log_file(log_file,offsets,new_log_out)
         else:
-            print 'No log specified -- assuming event matrix is in the data'
+            logger.info( 'No log specified -- assuming event matrix is in the data')
     
 
     def __load_data__(self):
@@ -61,16 +61,16 @@ class SignalManager:
             if self.base_file_name() is None:
                 raise Exception('Data was not specified')
             elif self.__check_for_files__('hd5'): #HD5 is the basis for pytables
-                print 'Found .hd5 -- opening'
+                logger.info( 'Found .hd5 -- opening')
             elif self.__check_for_files__('fif'):
-                print 'Could not find .hd5 -- converting  .fif->.hd5'
+                logger.info( 'Could not find .hd5 -- converting  .fif->.hd5')
                 self.__fif_2_hdf5__()
             elif self.__check_for_files__('edf'):
-                print 'Could not find .hd5 -- converting .edf->.fif->.hd5'
+                logger.info( 'Could not find .hd5 -- converting .edf->.fif->.hd5')
                 self.__edf_2_fif__()
                 self.__fif_2_hdf5__()
             else:
-                print "Could not find any appropriate files. Valid files are *.[edf, fif, hd5]. Assuming data will be supplied later"
+                logger.debug( "Could not find any appropriate files. Valid files are *.[edf, fif, hd5]. Assuming data will be supplied later")
             self.__open_hdf5__()
         except Exception as e: raise e
 
@@ -88,10 +88,10 @@ class SignalManager:
     def __edf_2_fif__(self):
         #Tries to convert edf to fif
         sysString = 'mne_edf2fiff --edf '+self.base_file_name()+'.edf --fif ' + self.base_file_name()+'.fif'
-        print sysString
+        logger.debug( sysString_
         try:
             os.system(sysString)
-            print 'Conversion edf->fif complete'
+            logger.debug( 'Conversion edf->fif complete')
         except:
             raise Exception('Could not find mne on system path -- cannot convert from .edf')
             
@@ -104,7 +104,7 @@ class SignalManager:
         except:
             raise Exception("'Could not open fif file'")
         
-        print 'Extracting data from .fif'
+        logger.debug( 'Extracting data from .fif')
         data,time_stamps = raw[1:,:raw.last_samp]
         ch_names = raw.ch_names[1:]
         fs = raw.info['sfreq']
@@ -114,13 +114,13 @@ class SignalManager:
 
     def __create_events_matrix__(self):
         #Creates a Dataframe with index=data timestamps times, columns=signal channels
-        print "Generating event matrix"
+        logger.info( "Generating event matrix")
         events = pd.read_csv(self.__log_file,delimiter='\t')
-        print 'Found columns:'+str(events.columns)
+        logger.debug( 'Found columns:'+str(events.columns))
         #self.__signals['event_matrix'] = events[['pulse.on','pulse.off','event.code']]
         self.__signals['event_matrix'] = events
         self.__flushSignals__()
-        print "Saving event matrix"
+        logger.info( "Saving event matrix")
         self.__find_blocks__()
           
 
@@ -128,23 +128,25 @@ class SignalManager:
         #Finds the on and off times of blocks
         #Note: Blocks are defined as starting at event types blockStart(event id 1)
         
-        print "Finding blocks"
-        print '\tCalculating block indices'
+        logger.info( "Finding blocks")
+        logger.debug( '\tCalculating block indices')
         em = self.event_matrix()
         blockStartIndices = em[em['event.code'] == self.__eventskey['blockStart']].index #Start of each block
-
+	logger.debug(blockStartIndices)
+	
         blockEndIndices = blockStartIndices
         blockEndIndices = blockEndIndices[1:].values - 2 #Remove the first pulse and shift to become last pulse in each preceding block
         blockEndIndices = np.append(blockEndIndices, len(em) - 1) #Add final pulse in file
         #Define the times of each block
-        print '\tCalculating start and end times of each block'
+        logger.debug( '\tCalculating start and end times of each block')
         startTimes = em.ix[blockStartIndices]['pulse.on'].values
         endTimes = em.ix[blockEndIndices]['pulse.off'].values
-        
+        loogger.debug('Start times '+str(startTimes))
+        logger.debug('End times '+str(endTimes))
         blocks = pd.DataFrame([startTimes,endTimes])
         blocks = blocks.T
         blocks.columns=['pulse.on','pulse.off']
-        print "Saving blocks"
+        logger.info( "Saving blocks")
         self.__signals['blocks'] = blocks
         self.__flushSignals__()
     
@@ -173,21 +175,21 @@ class SignalManager:
         
         (x,y)= data.shape
         #Store in hd5(pytables) format
-        print "Converting to pytables"
+        logger.info( "Converting to pytables")
         signals = pd.HDFStore(base_file_name+'.hd5','w')
         #
-        print '\tSaving timing info'
+        logger.debug( '\tSaving timing info')
         signals['times'] = pd.Series(times,dtype='float64')
         #
-        print '\tSaving data'
+        logger.debug( '\tSaving data')
         signals['data']=pd.DataFrame(data.T,columns=cnames,index=times) #Ideally this would be tables=True
         #        
-        print "\tSaving meta data"
+        logger.debug( "\tSaving meta data")
         signals['channels'] = pd.Series(cnames)
         signals['fs'] = pd.Series(fs)
         #signals['data_dimensions'] = pd.Series(['channels', 'samples'])
         signals.close()
-        print 'Conversion complete'
+        logger.info( 'Conversion complete')
     
 
     def add_channel(self,sig,name):
@@ -204,7 +206,7 @@ class SignalManager:
             self.__signals['channels'] = self.channels().append(pd.Series(name,index=[len(self.channels())]))
             self.__signals.flush()
         else:
-            print 'Channel with that name already exists'
+            logger.info( 'Channel with that name already exists')
              
     def remove_channel(self,chan):
         #Removes channel chan from the persistent .hd5 file
@@ -226,7 +228,7 @@ class SignalManager:
                 else:   
                     self.set_wd(currentChan)
         except:
-            print 'No channel called '+chan
+            logger.info( 'No channel called '+chan)
         
  
     #################Public Methods#########################   
@@ -262,7 +264,7 @@ class SignalManager:
         #meanApplyChans : channels to apply the mean to  (default is meanCalcChans)
         
         if meanCalcChans is not None:
-            print 'Calculating mean'
+            logger.info( 'Calculating mean')
             m = self.calc_mean(meanCalcChans)
             permMeanChans = []
             for chan in meanApplyChans if (meanApplyChans is not None) else meanCalcChans:
@@ -301,66 +303,32 @@ class SignalManager:
         if self.__wd is not None:
             return self.__wd[self.wc() if channels is None else channels]
         else:
-            print "No working data was set"
+            logger.debug( "No working data was set")
        
     def fs(self):
         #Return the sample rate of the signal
         return self.__signals['fs'][0]
     
 
-    def correct_event_times_wrk(self,offsets,new_log_out=False):
-        #Correct the event matrix to include the appropriate block offsets
-        #Required : Offsets - a Pandas Dataframe or Series with ['time'] offsets for each block
-        #Optional : new_log_out - Boolean value if the corrected file is to be output
-
-        print 'Correcting times in log file'
-        offsets = pd.read_csv(offsets)
-        blocks = self.blocks()
-        startTimes = blocks['pulse.on']
-        offsets = pd.Series(offsets['time']-startTimes,index=range(len(offsets))) #Remove the psychopy start time from the offset
-        
-        blocks['pulse.on']+= offsets
-        blocks['pulse.off']+= offsets
-        #Correct block times by the offsets
-        print "\tCorrecting blocks data"
-        for i,offset in enumerate(offsets.values):
-            blocks.ix[i]['pulse.on'] += offset
-            blocks.ix[i]['pulse.off'] += offset
-        
-        self.__signals['blocks'] = blocks
-        
-        print '\tCorrecting event times'
-        em = self.event_matrix()
-        for i in em['Block'].unique():
-            em.ix[em['Block']==i,'pulse.on']+= offsets.ix[i]
-            em.ix[em['Block']==i,'pulse.off']+= offsets.ix[i]
-        
-        self.__signals['event_matrix'] = em
-        self.__flushSignals__()
-    
-        if new_log_out:
-            print "Saving corrected log file"
-            self.__signals['event_matrix'].to_csv(self.__base_file_name+'_corrected_log.csv')
-            self.__log_file = self.__base_file_name+'_corrected_log.csv'
-            
     def correct_event_times(self,offsets,new_log_out=False):
             #Correct the event matrix to include the appropriate block offsets
             #Required : Offsets - a Pandas Dataframe or Series with ['time'] offsets for each block
             #Optional : new_log_out - Boolean value if the corrected file is to be output
     
-            print 'Correcting times in log file'
+            logger.info( 'Correcting times in log file')
             offsets = pd.read_csv(offsets)
             blocks = self.blocks()
             startTimes = blocks['pulse.on']
             
             offsets = pd.Series(offsets['time']-startTimes,index=range(len(offsets))) #Remove the psychopy start time from the offset
             #Correct block times by the offsets
-            print "\tCorrecting blocks data"
+            logger.debug( "\tCorrecting blocks data")
             blocks['pulse.on']+=offsets
             blocks['pulse.off']+=offsets
             self.__signals['blocks'] = blocks
-            
-            print '\tCorrecting event times'
+            logger.debug(blocks)
+            	
+            logger.debug( '\tCorrecting event times')
             em = self.event_matrix()
             for i,block in enumerate(em['Block'].unique()):
                 em.ix[em['Block']==block,'pulse.on']+= offsets.ix[i]
@@ -370,7 +338,7 @@ class SignalManager:
             self.__flushSignals__()
         
             if new_log_out:
-                print "Saving corrected log file"
+                logger.info( "Saving corrected log file")
                 self.__signals['event_matrix'].to_csv(self.__base_file_name+'_corrected_log.csv')
                 self.__log_file = self.__base_file_name+'_corrected_log.csv'
             
@@ -379,7 +347,7 @@ class SignalManager:
         #Required: log - path to log file
         #Optional: offsets - path to file contains offsets of block times
         #        : new_log_out - Boolean value if the corrected file is to be output
-        print 'Saving log file'
+        logger.info( 'Saving log file')
         self.__log_file = log
         self.__create_events_matrix__()
         if offsets:
@@ -391,7 +359,7 @@ class SignalManager:
         #          meanChans - The channels to calculate the mean from
         #          meanApplyChans - The channels to apply the mean to (default = meanCalcChans)
     
-        print "Loading working data"
+        logger.info( "Loading working data")
         self.__wd = self.data(columns=channels if channels else self.channels())
         self.__wc = channels if channels else self.channels()
 
