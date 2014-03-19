@@ -6,6 +6,9 @@ import gc
 import mne.time_frequency as mtf
 import matplotlib.pyplot as plt
 
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('__SignalManager__')
+
 class SignalManager:
     #This class manages signals in edf,fif,or hd5 format (note all files are converted to hd5)
     #It makes extensive use of pandas to represent time series and events logs
