@@ -40,6 +40,7 @@ class SignalManager:
         #         : new_log_out - if Offsets is specified then new_log_out is a Boolean value if the corrected file is to be output
         
         self.__base_file_name = base_file_name
+        logger.debug('Using file : %s'%(base_file_name))
         self.__load_data__()      
         
         if eventsKey is None:
@@ -70,7 +71,7 @@ class SignalManager:
                 self.__edf_2_fif__()
                 self.__fif_2_hdf5__()
             else:
-                logger.debug( "Could not find any appropriate files. Valid files are *.[edf, fif, hd5]. Assuming data will be supplied later")
+                logger.info( "Could not find any appropriate files. Valid files are *.[edf, fif, hd5]. Assuming data will be supplied later")
             self.__open_hdf5__()
         except Exception as e: raise e
 
@@ -83,16 +84,18 @@ class SignalManager:
         try:
             self.__signals = pd.HDFStore(self.__base_file_name+'.hd5')
         except:
+            logger.warning('Could not open hd5 file')
             raise Exception('Could not open hd5 file')
 
     def __edf_2_fif__(self):
         #Tries to convert edf to fif
         sysString = 'mne_edf2fiff --edf '+self.base_file_name()+'.edf --fif ' + self.base_file_name()+'.fif'
-        logger.debug( sysString_
+        logger.debug( sysString)
         try:
             os.system(sysString)
-            logger.debug( 'Conversion edf->fif complete')
+            logger.info( 'Conversion edf->fif complete')
         except:
+            logger.warning('Could not find mne on system path')
             raise Exception('Could not find mne on system path -- cannot convert from .edf')
             
     def __fif_2_hdf5__(self):
@@ -102,12 +105,15 @@ class SignalManager:
         try:
             raw = mne.fiff.Raw(self.__base_file_name+'.fif')
         except:
+            logger.warning('Could not open fif file')
             raise Exception("'Could not open fif file'")
         
         logger.debug( 'Extracting data from .fif')
         data,time_stamps = raw[1:,:raw.last_samp]
         ch_names = raw.ch_names[1:]
+        logger.debug('Found channels : %s'%(str(ch_names)))
         fs = raw.info['sfreq']
+        logger.debug('Found frequency : %f'%(fs))
         raw.close()
         self.save_hdf(data,time_stamps,ch_names,np.array(fs,self.base_file_name())
         self.__open_hdf5__()
@@ -139,6 +145,7 @@ class SignalManager:
         blockEndIndices = np.append(blockEndIndices, len(em) - 1) #Add final pulse in file
         #Define the times of each block
         logger.debug( '\tCalculating start and end times of each block')
+        
         startTimes = em.ix[blockStartIndices]['pulse.on'].values
         endTimes = em.ix[blockEndIndices]['pulse.off'].values
         loogger.debug('Start times '+str(startTimes))
