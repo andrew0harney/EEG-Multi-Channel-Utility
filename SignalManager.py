@@ -5,6 +5,8 @@ import numpy as np
 import gc
 import mne.time_frequency as mtf
 import matplotlib.pyplot as plt
+import logging
+import mne
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('__SignalManager__')
@@ -115,7 +117,7 @@ class SignalManager:
         fs = raw.info['sfreq']
         logger.debug('Found frequency : %f'%(fs))
         raw.close()
-        self.save_hdf(data,time_stamps,ch_names,np.array(fs,self.base_file_name())
+        self.save_hdf(data,time_stamps,ch_names,np.array(fs,self.base_file_name()))
         self.__open_hdf5__()
 
     def __create_events_matrix__(self):
@@ -138,8 +140,8 @@ class SignalManager:
         logger.debug( '\tCalculating block indices')
         em = self.event_matrix()
         blockStartIndices = em[em['event.code'] == self.__eventskey['blockStart']].index #Start of each block
-	logger.debug(blockStartIndices)
-	
+        logger.debug(blockStartIndices)
+    
         blockEndIndices = blockStartIndices
         blockEndIndices = blockEndIndices[1:].values - 2 #Remove the first pulse and shift to become last pulse in each preceding block
         blockEndIndices = np.append(blockEndIndices, len(em) - 1) #Add final pulse in file
@@ -148,7 +150,7 @@ class SignalManager:
         
         startTimes = em.ix[blockStartIndices]['pulse.on'].values
         endTimes = em.ix[blockEndIndices]['pulse.off'].values
-        loogger.debug('Start times '+str(startTimes))
+        logger.debug('Start times '+str(startTimes))
         logger.debug('End times '+str(endTimes))
         blocks = pd.DataFrame([startTimes,endTimes])
         blocks = blocks.T
@@ -334,7 +336,7 @@ class SignalManager:
             blocks['pulse.off']+=offsets
             self.__signals['blocks'] = blocks
             logger.debug(blocks)
-            	
+                
             logger.debug( '\tCorrecting event times')
             em = self.event_matrix()
             for i,block in enumerate(em['Block'].unique()):
@@ -395,7 +397,7 @@ class SignalManager:
             return data.ix[self.snap_time(min(times)):self.snap_time(max(times))].values[:-1]
         elif indices:
             return data.iloc[indices]
-	
+    
     #Timing functions
     def snap_time(self,t):
         #Finds the nearest time index to time t
@@ -403,13 +405,13 @@ class SignalManager:
         #return self.times()[self.time_to_index(t)]
 
     def index_to_time(self,ix):
-	   #Returns the time of a given index
-	   return self.times().iloc[ix]
+       #Returns the time of a given index
+       return self.times().iloc[ix]
 
     def time_to_index(self,t):
         #Returns the index of a given time point
         return int(np.floor(t*float(self.fs())))
-	    #return self.times().searchsorted(t)
+        #return self.times().searchsorted(t)
 
     def num_points(self,times):
         #Returns the number of (inclusive) samples between two data points
@@ -485,3 +487,115 @@ def shortest_event(grid,events):
     #Returns the shortes event in events
     #events - events
     return events.apply(lambda x: grid.num_points(times=[x['pulse.on'],x['pulse.off']]) ,axis=1).min()
+
+#######Utility Functions##############
+
+def calculate_average(grid,events,norms=None,chans=None):
+        
+        
+    if chans is None:
+        chans = grid.wc()
+    if norms is not None:
+        if len(norms) != len(events):
+            logger.info( 'Number of events and baselines is not equal')
+            return
+        norms.columns = ['baseline.on','baseline.off']
+               
+    maxtimediff = (events['pulse.off']-events['pulse.on']).max()
+    maxtimepoints =  round(maxtimediff*grid.fs())+1
+    data = grid.wd()
+        
+    avrg = np.zeros([len(chans),maxtimepoints])
+        
+    for j,chan in enumerate(chans):
+        logger.info( 'Processing channel '+chan)
+        counter = np.zeros(maxtimepoints)
+        for i,(on,off) in enumerate(events[['pulse.on','pulse.off']].values):
+            sig = grid.splice(data[chan], times=[on,off])
+            bl = norms.iloc[i].values
+            bl = grid.splice(data[chan],times=[bl[0],bl[1]])
+            sig -= bl[:len(sig)].mean()               
+            avrg[j,:len(sig)] += sig
+            counter[:len(sig)] += np.ones(len(sig))
+            avrg[j,:]/=counter
+    return avrg
+    
+    
+def normSignal(grid,frequencies = None,nc=None,dec=None,events=None):
+    #Returns normalised power spectrums for events (using morlet wavelets) [n_epochs,n_channels,n_frequencies]
+    #frequencies - morlet frequencies
+    #nc - number of cycles
+    #dec - decimation
+    #events - events to find power of
+    
+    if frequencies is None:
+        frequencies = np.arange(1,101)
+    if nc is None:
+        nc = 0.12*np.arange(1,len(frequencies)+1) #Linear formula [Chan,Baker et al. JNS 2011]
+        print nc
+    if dec is None:
+        dec = 1
+    if events is None:
+        events=grid.event_matrix()
+        events = events[events['event.code']==5] #Use ISIs as baseline
+     
+    #Pre allocate power matrix for efficiency
+    pows = np.zeros([len(events),len(grid.wc()),len(frequencies)])
+        
+    for j,chan in enumerate(grid.wc()):
+        for i,(on,off) in enumerate(events[['pulse.on','pulse.off']].values):
+            logger.info( 'Normalising power on channel '+chan+' baseline event '+str(i+1)+'/'+str(len(events)))
+            data = grid.splice(grid.wd()[chan],times=[on,off])[None,None,:]
+            data = np.vstack([data,data]) #mne doesn't allow only 1 event so duplicate the same event (which will then be averaged)
+            p,phase=mtf.induced_power(data, Fs=grid.fs(), frequencies=frequencies, use_fft=False, n_cycles=nc, decim=dec, n_jobs=1,normFreqs=None)
+            pows[i,j,:]=p.mean(axis=2).squeeze() #Take average across time for each frequency
+    return pows
+    
+    
+     
+def threshold_crossings(grid,sig=None,events=None,thresh=None,channel=None,tol=0):
+    #Finds the up and down crossings in the signal
+    #sig - signal to be thresholded
+    #thresh - the threshold for a crossing to occur
+    #channel - channel in the signal to be used
+    #boost - Will polarise the signal (i.e Vx > 0 -> x = 1)
+        
+    if sig is None:
+        if channel is not None:
+            sig = grid.wd()[channel]
+        else:
+            sig = grid.wd()['C127']
+        
+    if thresh is None:
+        thresh = sig.mean()
+        print 'Using '+str(thresh)+' as threshold'
+        
+    if events is None:
+        events = grid.event_matrix()                  
+        
+    up_crosses = np.array([])
+    down_crosses = np.array([])
+
+    #plt.figure()
+    #plt.hold(True)
+    for (on,off) in events.values:
+        signal = grid.splice(sig, times=[on-tol[0],off+tol[1]])
+        #plt.plot(signal)
+        ##all points above threshold 
+        above = np.where(signal>=thresh)[0]
+        ##if point one step back is below threshold, its an upcrossing: make sure not to include negative indices
+        indices = above-1  
+        up_cross = above[np.where(signal[indices] < thresh)[0]]+grid.time_to_index(on)
+        
+        ##if point one step ahead is below threshold, its a down-crossing: make sure not to go out of bounds
+        indices = np.asarray(above)+1
+        L = len(signal)
+        indices = indices[indices < L]
+        down_cross = above[np.where(signal[indices] < thresh)[0]]+grid.time_to_index(on)
+        up_crosses = np.hstack((up_crosses,up_cross))
+        down_crosses = np.hstack((down_crosses,down_cross))
+            
+    print 'Found '+str(len(up_crosses))+' up crossings and '+str(len(down_crosses))+' down crossings'
+    up_crosses.sort()
+    down_crosses.sort()
+    return up_crosses, down_crosses
