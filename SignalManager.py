@@ -185,7 +185,7 @@ class SignalManager:
         (x,y)= data.shape
         #Store in hd5(pytables) format
         logger.info( "Converting to pytables")
-        signals = pd.HDFStore(base_file_name+'.hd5','w')
+        signals = pd.HDFStore(base_file_name+'.hd5','w',complevel=9)
         #
         logger.debug( '\tSaving timing info')
         signals['times'] = pd.Series(times,dtype='float64')
