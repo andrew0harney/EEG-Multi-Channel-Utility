@@ -420,6 +420,7 @@ class SignalManager:
     
     
 #######Utility Functions##############
+
 def photodiode_signal(grid):
 #Generates a photodiode signal from the log file (useful for checking alignment with some independent signal)
     
@@ -458,7 +459,6 @@ def show_events_on_chan(grid,chan,eventCodes,colours=None):
 #colours - colours to highlight respective event codes
 
 
-
     #Plot the base signal
     signal = grid.data()[chan]
     plt.plot(signal)    
@@ -475,7 +475,10 @@ def show_events_on_chan(grid,chan,eventCodes,colours=None):
         blockOnIx.apply(lambda x: plt.axvspan(x['pulse.on'], x["pulse.off"], facecolor=colours[i%len(colours)], alpha=0.5),axis=1)
     plt.title('Psychopy/EEG line-up')
     plt.xlabel('Time (s)')
-    plt.ylabel('EEG')
+    plt.ylabel('Signal')
+
+
+#######Utility Functions##############
 
 
 def longest_event(grid,events):
@@ -488,39 +491,7 @@ def shortest_event(grid,events):
     #events - events
     return events.apply(lambda x: grid.num_points(times=[x['pulse.on'],x['pulse.off']]) ,axis=1).min()
 
-#######Utility Functions##############
 
-def calculate_average(grid,events,norms=None,chans=None):
-        
-        
-    if chans is None:
-        chans = grid.wc()
-    if norms is not None:
-        if len(norms) != len(events):
-            logger.info( 'Number of events and baselines is not equal')
-            return
-        norms.columns = ['baseline.on','baseline.off']
-               
-    maxtimediff = (events['pulse.off']-events['pulse.on']).max()
-    maxtimepoints =  round(maxtimediff*grid.fs())+1
-    data = grid.wd()
-        
-    avrg = np.zeros([len(chans),maxtimepoints])
-        
-    for j,chan in enumerate(chans):
-        logger.info( 'Processing channel '+chan)
-        counter = np.zeros(maxtimepoints)
-        for i,(on,off) in enumerate(events[['pulse.on','pulse.off']].values):
-            sig = grid.splice(data[chan], times=[on,off])
-            bl = norms.iloc[i].values
-            bl = grid.splice(data[chan],times=[bl[0],bl[1]])
-            sig -= bl[:len(sig)].mean()               
-            avrg[j,:len(sig)] += sig
-            counter[:len(sig)] += np.ones(len(sig))
-            avrg[j,:]/=counter
-    return avrg
-    
-    
 def normSignal(grid,frequencies = None,nc=None,dec=None,events=None):
     #Returns normalised power spectrums for events (using morlet wavelets) [n_epochs,n_channels,n_frequencies]
     #frequencies - morlet frequencies
@@ -559,16 +530,15 @@ def threshold_crossings(grid,sig=None,events=None,thresh=None,channel=None,tol=0
     #thresh - the threshold for a crossing to occur
     #channel - channel in the signal to be used
     #boost - Will polarise the signal (i.e Vx > 0 -> x = 1)
-        
+    logger.info('Finding signal crossings')
+    
     if sig is None:
-        if channel is not None:
-            sig = grid.wd()[channel]
-        else:
-            sig = grid.wd()['C127']
+        logger.debug('No signal was supplied')
+        return
         
     if thresh is None:
         thresh = sig.mean()
-        print 'Using '+str(thresh)+' as threshold'
+        logger.info('Using '+str(thresh)+' as threshold')
         
     if events is None:
         events = grid.event_matrix()                  
@@ -580,14 +550,14 @@ def threshold_crossings(grid,sig=None,events=None,thresh=None,channel=None,tol=0
     #plt.hold(True)
     for (on,off) in events.values:
         signal = grid.splice(sig, times=[on-tol[0],off+tol[1]])
-        #plt.plot(signal)
+
         ##all points above threshold 
         above = np.where(signal>=thresh)[0]
-        ##if point one step back is below threshold, its an upcrossing: make sure not to include negative indices
+        #if point one step back is below threshold, its an upcrossing: make sure not to include negative indices
         indices = above-1  
         up_cross = above[np.where(signal[indices] < thresh)[0]]+grid.time_to_index(on)
         
-        ##if point one step ahead is below threshold, its a down-crossing: make sure not to go out of bounds
+        #if point one step ahead is below threshold, its a down-crossing: make sure not to go out of bounds
         indices = np.asarray(above)+1
         L = len(signal)
         indices = indices[indices < L]
@@ -595,7 +565,7 @@ def threshold_crossings(grid,sig=None,events=None,thresh=None,channel=None,tol=0
         up_crosses = np.hstack((up_crosses,up_cross))
         down_crosses = np.hstack((down_crosses,down_cross))
             
-    print 'Found '+str(len(up_crosses))+' up crossings and '+str(len(down_crosses))+' down crossings'
+    logger.info('Found '+str(len(up_crosses))+' up crossings and '+str(len(down_crosses))+' down crossings')
     up_crosses.sort()
     down_crosses.sort()
     return up_crosses, down_crosses
