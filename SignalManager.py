@@ -7,6 +7,7 @@ import mne.time_frequency as mtf
 import matplotlib.pyplot as plt
 import logging
 import mne
+import pdb
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('__SignalManager__')
@@ -99,7 +100,24 @@ class SignalManager:
         except:
             logger.warning('Could not find mne on system path')
             raise Exception('Could not find mne on system path -- cannot convert from .edf')
-            
+    
+    def removeInterBlockSignal(self):
+        #Will remove parts of the signal not important to the experiment
+          
+        expTimes = self.__exptimes__()
+        self.__signals['Data'] = self.__signals['Data'][[expTimes]]
+        self.__signals.flush()
+    
+    def __exptimes__(self):
+        #Finds experimental time points only
+        
+        mask = np.zeros(len(self.times()))
+        for on,off in self.blocks().values:
+            on = self.time_to_index(on)
+            off = self.time_to_index(off)
+            mask[on:off] = 1
+        return self.times().ix[mask]
+        
     def __fif_2_hdf5__(self):
         #Tries to convert .fif file to .hd5 format
         
@@ -185,7 +203,8 @@ class SignalManager:
         (x,y)= data.shape
         #Store in hd5(pytables) format
         logger.info( "Converting to pytables")
-        signals = pd.HDFStore(base_file_name+'.hd5','w',complevel=9)
+        #signals = pd.HDFStore(base_file_name+'.hd5','w',complevel=9)
+        signals = pd.HDFStore(base_file_name+'.hd5','w')
         #
         logger.debug( '\tSaving timing info')
         signals['times'] = pd.Series(times,dtype='float64')
@@ -261,7 +280,7 @@ class SignalManager:
 
         
     def calc_mean(self,channels):
-        #Return mean of data across all channels
+        #Return the mean channel (i.e the mean power across all channels for a given time point)
         #channels - channels to calculate the mean over
     
         return pd.Series(self.data(columns=channels).mean(axis=1),index=self.times())
@@ -277,7 +296,8 @@ class SignalManager:
             m = self.calc_mean(meanCalcChans)
             permMeanChans = []
             for chan in meanApplyChans if (meanApplyChans is not None) else meanCalcChans:
-                self.__wd[chan] -=m #Cannot use .sub() - blows up!
+                logger.debug('Calculating mean for channel '+chan)
+                self.__wd[chan] -= m #Cannot use .sub() - blows up!
                 permMeanChans.append(chan)
             self.__currentMeanCalcChans = permMeanChans
             return m
@@ -398,6 +418,18 @@ class SignalManager:
         elif indices:
             return data.iloc[indices]
     
+    def eventsTimes(self,events,limit=None):
+        #Get combined time indices of each event period
+        #events - events to index
+        #limit - specify cut-off for each event in seconds
+        
+        limit = int(limit*self.fs())
+        allTimes = np.array([])
+        for i in range(len(events)):
+            x = self.event_times(event=events.iloc[i])[:limit]
+            allTimes = np.hstack([allTimes,x])    
+        return allTimes
+    
     #Timing functions
     def snap_time(self,t):
         #Finds the nearest time index to time t
@@ -405,22 +437,43 @@ class SignalManager:
         #return self.times()[self.time_to_index(t)]
 
     def index_to_time(self,ix):
-       #Returns the time of a given index
-       return self.times().iloc[ix]
+        #Returns the time of a given index
+        return self.times().iloc[ix]
 
     def time_to_index(self,t):
         #Returns the index of a given time point
         return int(np.floor(t*float(self.fs())))
-        #return self.times().searchsorted(t)
-
-    def num_points(self,times):
+    
+    def event_times(self,event=None,times=None):
+        #Returns a full list of event sample times
+        if event is not None:
+            [start,stop] = event[['pulse.on','pulse.off']].values
+        elif times is not None:
+            start = np.min(times)
+            stop = np.max(times)
+        else:
+            logger.debug('No event or time was supplied')
+            return None
+        
+        return self.times()[self.time_to_index(start):self.time_to_index(stop)]
+    
+    def event_data(self,event,chans=None):
+        #Returns the data for a given event
+        if chans is None:
+            chans = self.wc()
+    
+    def num_points(self,event=None,times=None):
         #Returns the number of (inclusive) samples between two data points
         #If fs is specified then use that, otherwise will need to snip a section and check the length
-        return self.time_to_index(max(times))-self.time_to_index(min(times))
-    
+        if event is not None:
+            return self.time_to_index(event['pulse.off'])-self.time_to_index(event['pulse.on'])
+        elif times is not None:
+            return self.time_to_index(max(times))-self.time_to_index(min(times))
+        else:
+            logger.debug('No event or times were supplied ')
+            return None
     
 #######Utility Functions##############
-
 def photodiode_signal(grid):
 #Generates a photodiode signal from the log file (useful for checking alignment with some independent signal)
     
@@ -459,6 +512,7 @@ def show_events_on_chan(grid,chan,eventCodes,colours=None):
 #colours - colours to highlight respective event codes
 
 
+
     #Plot the base signal
     signal = grid.data()[chan]
     plt.plot(signal)    
@@ -475,10 +529,7 @@ def show_events_on_chan(grid,chan,eventCodes,colours=None):
         blockOnIx.apply(lambda x: plt.axvspan(x['pulse.on'], x["pulse.off"], facecolor=colours[i%len(colours)], alpha=0.5),axis=1)
     plt.title('Psychopy/EEG line-up')
     plt.xlabel('Time (s)')
-    plt.ylabel('Signal')
-
-
-#######Utility Functions##############
+    plt.ylabel('EEG')
 
 
 def longest_event(grid,events):
@@ -491,7 +542,39 @@ def shortest_event(grid,events):
     #events - events
     return events.apply(lambda x: grid.num_points(times=[x['pulse.on'],x['pulse.off']]) ,axis=1).min()
 
+#######Utility Functions##############
 
+def calculate_average(grid,events,norms=None,chans=None):
+        
+        
+    if chans is None:
+        chans = grid.wc()
+    if norms is not None:
+        if len(norms) != len(events):
+            logger.info( 'Number of events and baselines is not equal')
+            return
+        norms.columns = ['baseline.on','baseline.off']
+               
+    maxtimediff = (events['pulse.off']-events['pulse.on']).max()
+    maxtimepoints =  round(maxtimediff*grid.fs())+1
+    data = grid.wd()
+        
+    avrg = np.zeros([len(chans),maxtimepoints])
+        
+    for j,chan in enumerate(chans):
+        logger.info( 'Processing channel '+chan)
+        counter = np.zeros(maxtimepoints)
+        for i,(on,off) in enumerate(events[['pulse.on','pulse.off']].values):
+            sig = grid.splice(data[chan], times=[on,off])
+            bl = norms.iloc[i].values
+            bl = grid.splice(data[chan],times=[bl[0],bl[1]])
+            sig -= bl[:len(sig)].mean()               
+            avrg[j,:len(sig)] += sig
+            counter[:len(sig)] += np.ones(len(sig))
+            avrg[j,:]/=counter
+    return avrg
+    
+    
 def normSignal(grid,frequencies = None,nc=None,dec=None,events=None):
     #Returns normalised power spectrums for events (using morlet wavelets) [n_epochs,n_channels,n_frequencies]
     #frequencies - morlet frequencies
@@ -530,15 +613,16 @@ def threshold_crossings(grid,sig=None,events=None,thresh=None,channel=None,tol=0
     #thresh - the threshold for a crossing to occur
     #channel - channel in the signal to be used
     #boost - Will polarise the signal (i.e Vx > 0 -> x = 1)
-    logger.info('Finding signal crossings')
-    
+        
     if sig is None:
-        logger.debug('No signal was supplied')
-        return
+        if channel is not None:
+            sig = grid.wd()[channel]
+        else:
+            sig = grid.wd()['C127']
         
     if thresh is None:
         thresh = sig.mean()
-        logger.info('Using '+str(thresh)+' as threshold')
+        print 'Using '+str(thresh)+' as threshold'
         
     if events is None:
         events = grid.event_matrix()                  
@@ -550,14 +634,14 @@ def threshold_crossings(grid,sig=None,events=None,thresh=None,channel=None,tol=0
     #plt.hold(True)
     for (on,off) in events.values:
         signal = grid.splice(sig, times=[on-tol[0],off+tol[1]])
-
+        #plt.plot(signal)
         ##all points above threshold 
         above = np.where(signal>=thresh)[0]
-        #if point one step back is below threshold, its an upcrossing: make sure not to include negative indices
+        ##if point one step back is below threshold, its an upcrossing: make sure not to include negative indices
         indices = above-1  
         up_cross = above[np.where(signal[indices] < thresh)[0]]+grid.time_to_index(on)
         
-        #if point one step ahead is below threshold, its a down-crossing: make sure not to go out of bounds
+        ##if point one step ahead is below threshold, its a down-crossing: make sure not to go out of bounds
         indices = np.asarray(above)+1
         L = len(signal)
         indices = indices[indices < L]
@@ -565,7 +649,7 @@ def threshold_crossings(grid,sig=None,events=None,thresh=None,channel=None,tol=0
         up_crosses = np.hstack((up_crosses,up_cross))
         down_crosses = np.hstack((down_crosses,down_cross))
             
-    logger.info('Found '+str(len(up_crosses))+' up crossings and '+str(len(down_crosses))+' down crossings')
+    print 'Found '+str(len(up_crosses))+' up crossings and '+str(len(down_crosses))+' down crossings'
     up_crosses.sort()
     down_crosses.sort()
     return up_crosses, down_crosses
