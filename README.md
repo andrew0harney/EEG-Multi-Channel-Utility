@@ -5,6 +5,15 @@ Python implementation of a multiple channel signal management class. Has useful 
 
 Channel data is taken from from .edf, .fiff, and .hd5 formats. Log/event data is taken from .csv format. The framework essentially acts as a wrapper around the pandas toolkit. 
 
+--------------------------------------
+Requirements:
+
+- numpy
+- pandas
+- mne (for format conversion)
+
+
+
 ---------------------------------------
 
 Notes:

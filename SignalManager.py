@@ -5,6 +5,12 @@ import numpy as np
 import gc
 import mne.time_frequency as mtf
 import matplotlib.pyplot as plt
+import logging
+import mne
+import pdb
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger('__SignalManager__')
 
 class SignalManager:
     #This class manages signals in edf,fif,or hd5 format (note all files are converted to hd5)
@@ -37,6 +43,7 @@ class SignalManager:
         #         : new_log_out - if Offsets is specified then new_log_out is a Boolean value if the corrected file is to be output
         
         self.__base_file_name = base_file_name
+        logger.debug('Using file : %s'%(base_file_name))
         self.__load_data__()      
         
         if eventsKey is None:
@@ -47,7 +54,7 @@ class SignalManager:
         if log_file:
             self.set_log_file(log_file,offsets,new_log_out)
         else:
-            print 'No log specified -- assuming event matrix is in the data'
+            logger.info( 'No log specified -- assuming event matrix is in the data')
     
 
     def __load_data__(self):
@@ -58,16 +65,16 @@ class SignalManager:
             if self.base_file_name() is None:
                 raise Exception('Data was not specified')
             elif self.__check_for_files__('hd5'): #HD5 is the basis for pytables
-                print 'Found .hd5 -- opening'
+                logger.info( 'Found .hd5 -- opening')
             elif self.__check_for_files__('fif'):
-                print 'Could not find .hd5 -- converting  .fif->.hd5'
+                logger.info( 'Could not find .hd5 -- converting  .fif->.hd5')
                 self.__fif_2_hdf5__()
             elif self.__check_for_files__('edf'):
-                print 'Could not find .hd5 -- converting .edf->.fif->.hd5'
+                logger.info( 'Could not find .hd5 -- converting .edf->.fif->.hd5')
                 self.__edf_2_fif__()
                 self.__fif_2_hdf5__()
             else:
-                print "Could not find any appropriate files. Valid files are *.[edf, fif, hd5]. Assuming data will be supplied later"
+                logger.info( "Could not find any appropriate files. Valid files are *.[edf, fif, hd5]. Assuming data will be supplied later")
             self.__open_hdf5__()
         except Exception as e: raise e
 
@@ -80,18 +87,37 @@ class SignalManager:
         try:
             self.__signals = pd.HDFStore(self.__base_file_name+'.hd5')
         except:
+            logger.warning('Could not open hd5 file')
             raise Exception('Could not open hd5 file')
 
     def __edf_2_fif__(self):
         #Tries to convert edf to fif
         sysString = 'mne_edf2fiff --edf '+self.base_file_name()+'.edf --fif ' + self.base_file_name()+'.fif'
-        print sysString
+        logger.debug( sysString)
         try:
             os.system(sysString)
-            print 'Conversion edf->fif complete'
+            logger.info( 'Conversion edf->fif complete')
         except:
+            logger.warning('Could not find mne on system path')
             raise Exception('Could not find mne on system path -- cannot convert from .edf')
-            
+    
+    def removeInterBlockSignal(self):
+        #Will remove parts of the signal not important to the experiment
+          
+        expTimes = self.__exptimes__()
+        self.__signals['Data'] = self.__signals['Data'][[expTimes]]
+        self.__signals.flush()
+    
+    def __exptimes__(self):
+        #Finds experimental time points only
+        
+        mask = np.zeros(len(self.times()))
+        for on,off in self.blocks().values:
+            on = self.time_to_index(on)
+            off = self.time_to_index(off)
+            mask[on:off] = 1
+        return self.times().ix[mask]
+        
     def __fif_2_hdf5__(self):
         #Tries to convert .fif file to .hd5 format
         
@@ -99,25 +125,28 @@ class SignalManager:
         try:
             raw = mne.fiff.Raw(self.__base_file_name+'.fif')
         except:
+            logger.warning('Could not open fif file')
             raise Exception("'Could not open fif file'")
         
-        print 'Extracting data from .fif'
+        logger.debug( 'Extracting data from .fif')
         data,time_stamps = raw[1:,:raw.last_samp]
         ch_names = raw.ch_names[1:]
+        logger.debug('Found channels : %s'%(str(ch_names)))
         fs = raw.info['sfreq']
+        logger.debug('Found frequency : %f'%(fs))
         raw.close()
-        self.save_hdf(data,time_stamps,ch_names,np.array(fs,self.base_file_name())
+        self.save_hdf(data,time_stamps,ch_names,np.array(fs,self.base_file_name()))
         self.__open_hdf5__()
 
     def __create_events_matrix__(self):
         #Creates a Dataframe with index=data timestamps times, columns=signal channels
-        print "Generating event matrix"
+        logger.info( "Generating event matrix")
         events = pd.read_csv(self.__log_file,delimiter='\t')
-        print 'Found columns:'+str(events.columns)
+        logger.debug( 'Found columns:'+str(events.columns))
         #self.__signals['event_matrix'] = events[['pulse.on','pulse.off','event.code']]
         self.__signals['event_matrix'] = events
         self.__flushSignals__()
-        print "Saving event matrix"
+        logger.info( "Saving event matrix")
         self.__find_blocks__()
           
 
@@ -125,23 +154,26 @@ class SignalManager:
         #Finds the on and off times of blocks
         #Note: Blocks are defined as starting at event types blockStart(event id 1)
         
-        print "Finding blocks"
-        print '\tCalculating block indices'
+        logger.info( "Finding blocks")
+        logger.debug( '\tCalculating block indices')
         em = self.event_matrix()
         blockStartIndices = em[em['event.code'] == self.__eventskey['blockStart']].index #Start of each block
-
+        logger.debug(blockStartIndices)
+    
         blockEndIndices = blockStartIndices
         blockEndIndices = blockEndIndices[1:].values - 2 #Remove the first pulse and shift to become last pulse in each preceding block
         blockEndIndices = np.append(blockEndIndices, len(em) - 1) #Add final pulse in file
         #Define the times of each block
-        print '\tCalculating start and end times of each block'
+        logger.debug( '\tCalculating start and end times of each block')
+        
         startTimes = em.ix[blockStartIndices]['pulse.on'].values
         endTimes = em.ix[blockEndIndices]['pulse.off'].values
-        
+        logger.debug('Start times '+str(startTimes))
+        logger.debug('End times '+str(endTimes))
         blocks = pd.DataFrame([startTimes,endTimes])
         blocks = blocks.T
         blocks.columns=['pulse.on','pulse.off']
-        print "Saving blocks"
+        logger.info( "Saving blocks")
         self.__signals['blocks'] = blocks
         self.__flushSignals__()
     
@@ -170,21 +202,22 @@ class SignalManager:
         
         (x,y)= data.shape
         #Store in hd5(pytables) format
-        print "Converting to pytables"
+        logger.info( "Converting to pytables")
+        #signals = pd.HDFStore(base_file_name+'.hd5','w',complevel=9)
         signals = pd.HDFStore(base_file_name+'.hd5','w')
         #
-        print '\tSaving timing info'
+        logger.debug( '\tSaving timing info')
         signals['times'] = pd.Series(times,dtype='float64')
         #
-        print '\tSaving data'
+        logger.debug( '\tSaving data')
         signals['data']=pd.DataFrame(data.T,columns=cnames,index=times) #Ideally this would be tables=True
         #        
-        print "\tSaving meta data"
+        logger.debug( "\tSaving meta data")
         signals['channels'] = pd.Series(cnames)
         signals['fs'] = pd.Series(fs)
         #signals['data_dimensions'] = pd.Series(['channels', 'samples'])
         signals.close()
-        print 'Conversion complete'
+        logger.info( 'Conversion complete')
     
 
     def add_channel(self,sig,name):
@@ -201,7 +234,7 @@ class SignalManager:
             self.__signals['channels'] = self.channels().append(pd.Series(name,index=[len(self.channels())]))
             self.__signals.flush()
         else:
-            print 'Channel with that name already exists'
+            logger.info( 'Channel with that name already exists')
              
     def remove_channel(self,chan):
         #Removes channel chan from the persistent .hd5 file
@@ -223,7 +256,7 @@ class SignalManager:
                 else:   
                     self.set_wd(currentChan)
         except:
-            print 'No channel called '+chan
+            logger.info( 'No channel called '+chan)
         
  
     #################Public Methods#########################   
@@ -247,7 +280,7 @@ class SignalManager:
 
         
     def calc_mean(self,channels):
-        #Return mean of data across all channels
+        #Return the mean channel (i.e the mean power across all channels for a given time point)
         #channels - channels to calculate the mean over
     
         return pd.Series(self.data(columns=channels).mean(axis=1),index=self.times())
@@ -259,11 +292,12 @@ class SignalManager:
         #meanApplyChans : channels to apply the mean to  (default is meanCalcChans)
         
         if meanCalcChans is not None:
-            print 'Calculating mean'
+            logger.info( 'Calculating mean')
             m = self.calc_mean(meanCalcChans)
             permMeanChans = []
             for chan in meanApplyChans if (meanApplyChans is not None) else meanCalcChans:
-                self.__wd[chan] -=m #Cannot use .sub() - blows up!
+                logger.debug('Calculating mean for channel '+chan)
+                self.__wd[chan] -= m #Cannot use .sub() - blows up!
                 permMeanChans.append(chan)
             self.__currentMeanCalcChans = permMeanChans
             return m
@@ -298,66 +332,32 @@ class SignalManager:
         if self.__wd is not None:
             return self.__wd[self.wc() if channels is None else channels]
         else:
-            print "No working data was set"
+            logger.debug( "No working data was set")
        
     def fs(self):
         #Return the sample rate of the signal
         return self.__signals['fs'][0]
     
 
-    def correct_event_times_wrk(self,offsets,new_log_out=False):
-        #Correct the event matrix to include the appropriate block offsets
-        #Required : Offsets - a Pandas Dataframe or Series with ['time'] offsets for each block
-        #Optional : new_log_out - Boolean value if the corrected file is to be output
-
-        print 'Correcting times in log file'
-        offsets = pd.read_csv(offsets)
-        blocks = self.blocks()
-        startTimes = blocks['pulse.on']
-        offsets = pd.Series(offsets['time']-startTimes,index=range(len(offsets))) #Remove the psychopy start time from the offset
-        
-        blocks['pulse.on']+= offsets
-        blocks['pulse.off']+= offsets
-        #Correct block times by the offsets
-        print "\tCorrecting blocks data"
-        for i,offset in enumerate(offsets.values):
-            blocks.ix[i]['pulse.on'] += offset
-            blocks.ix[i]['pulse.off'] += offset
-        
-        self.__signals['blocks'] = blocks
-        
-        print '\tCorrecting event times'
-        em = self.event_matrix()
-        for i in em['Block'].unique():
-            em.ix[em['Block']==i,'pulse.on']+= offsets.ix[i]
-            em.ix[em['Block']==i,'pulse.off']+= offsets.ix[i]
-        
-        self.__signals['event_matrix'] = em
-        self.__flushSignals__()
-    
-        if new_log_out:
-            print "Saving corrected log file"
-            self.__signals['event_matrix'].to_csv(self.__base_file_name+'_corrected_log.csv')
-            self.__log_file = self.__base_file_name+'_corrected_log.csv'
-            
     def correct_event_times(self,offsets,new_log_out=False):
             #Correct the event matrix to include the appropriate block offsets
             #Required : Offsets - a Pandas Dataframe or Series with ['time'] offsets for each block
             #Optional : new_log_out - Boolean value if the corrected file is to be output
     
-            print 'Correcting times in log file'
+            logger.info( 'Correcting times in log file')
             offsets = pd.read_csv(offsets)
             blocks = self.blocks()
             startTimes = blocks['pulse.on']
             
             offsets = pd.Series(offsets['time']-startTimes,index=range(len(offsets))) #Remove the psychopy start time from the offset
             #Correct block times by the offsets
-            print "\tCorrecting blocks data"
+            logger.debug( "\tCorrecting blocks data")
             blocks['pulse.on']+=offsets
             blocks['pulse.off']+=offsets
             self.__signals['blocks'] = blocks
-            
-            print '\tCorrecting event times'
+            logger.debug(blocks)
+                
+            logger.debug( '\tCorrecting event times')
             em = self.event_matrix()
             for i,block in enumerate(em['Block'].unique()):
                 em.ix[em['Block']==block,'pulse.on']+= offsets.ix[i]
@@ -367,7 +367,7 @@ class SignalManager:
             self.__flushSignals__()
         
             if new_log_out:
-                print "Saving corrected log file"
+                logger.info( "Saving corrected log file")
                 self.__signals['event_matrix'].to_csv(self.__base_file_name+'_corrected_log.csv')
                 self.__log_file = self.__base_file_name+'_corrected_log.csv'
             
@@ -376,7 +376,7 @@ class SignalManager:
         #Required: log - path to log file
         #Optional: offsets - path to file contains offsets of block times
         #        : new_log_out - Boolean value if the corrected file is to be output
-        print 'Saving log file'
+        logger.info( 'Saving log file')
         self.__log_file = log
         self.__create_events_matrix__()
         if offsets:
@@ -388,7 +388,7 @@ class SignalManager:
         #          meanChans - The channels to calculate the mean from
         #          meanApplyChans - The channels to apply the mean to (default = meanCalcChans)
     
-        print "Loading working data"
+        logger.info( "Loading working data")
         self.__wd = self.data(columns=channels if channels else self.channels())
         self.__wc = channels if channels else self.channels()
 
@@ -417,7 +417,19 @@ class SignalManager:
             return data.ix[self.snap_time(min(times)):self.snap_time(max(times))].values[:-1]
         elif indices:
             return data.iloc[indices]
-	
+    
+    def eventsTimes(self,events,limit=None):
+        #Get combined time indices of each event period
+        #events - events to index
+        #limit - specify cut-off for each event in seconds
+        
+        limit = int(limit*self.fs())
+        allTimes = np.array([])
+        for i in range(len(events)):
+            x = self.event_times(event=events.iloc[i])[:limit]
+            allTimes = np.hstack([allTimes,x])    
+        return allTimes
+    
     #Timing functions
     def snap_time(self,t):
         #Finds the nearest time index to time t
@@ -425,19 +437,41 @@ class SignalManager:
         #return self.times()[self.time_to_index(t)]
 
     def index_to_time(self,ix):
-	   #Returns the time of a given index
-	   return self.times().iloc[ix]
+        #Returns the time of a given index
+        return self.times().iloc[ix]
 
     def time_to_index(self,t):
         #Returns the index of a given time point
         return int(np.floor(t*float(self.fs())))
-	    #return self.times().searchsorted(t)
-
-    def num_points(self,times):
+    
+    def event_times(self,event=None,times=None):
+        #Returns a full list of event sample times
+        if event is not None:
+            [start,stop] = event[['pulse.on','pulse.off']].values
+        elif times is not None:
+            start = np.min(times)
+            stop = np.max(times)
+        else:
+            logger.debug('No event or time was supplied')
+            return None
+        
+        return self.times()[self.time_to_index(start):self.time_to_index(stop)]
+    
+    def event_data(self,event,chans=None):
+        #Returns the data for a given event
+        if chans is None:
+            chans = self.wc()
+    
+    def num_points(self,event=None,times=None):
         #Returns the number of (inclusive) samples between two data points
         #If fs is specified then use that, otherwise will need to snip a section and check the length
-        return self.time_to_index(max(times))-self.time_to_index(min(times))
-    
+        if event is not None:
+            return self.time_to_index(event['pulse.off'])-self.time_to_index(event['pulse.on'])
+        elif times is not None:
+            return self.time_to_index(max(times))-self.time_to_index(min(times))
+        else:
+            logger.debug('No event or times were supplied ')
+            return None
     
 #######Utility Functions##############
 def photodiode_signal(grid):
@@ -477,6 +511,8 @@ def show_events_on_chan(grid,chan,eventCodes,colours=None):
 #eventCodes - events to use
 #colours - colours to highlight respective event codes
 
+
+
     #Plot the base signal
     signal = grid.data()[chan]
     plt.plot(signal)    
@@ -488,7 +524,7 @@ def show_events_on_chan(grid,chan,eventCodes,colours=None):
     #For each event type highlight the appropriate region in the signal
     em = grid.event_matrix()
     for i,event in enumerate(eventCodes):
-        highlight = em[em['event.code']==event]
+        highlight = em[em['event.code']==2] #UPDATE : take function handle for acceptability criteria 
         blockOnIx = highlight[['pulse.on','pulse.off']].apply(lambda x: [grid.time_to_index(x['pulse.on']), grid.time_to_index(x["pulse.off"])],axis=1)
         blockOnIx.apply(lambda x: plt.axvspan(x['pulse.on'], x["pulse.off"], facecolor=colours[i%len(colours)], alpha=0.5),axis=1)
     plt.title('Psychopy/EEG line-up')
@@ -505,3 +541,115 @@ def shortest_event(grid,events):
     #Returns the shortes event in events
     #events - events
     return events.apply(lambda x: grid.num_points(times=[x['pulse.on'],x['pulse.off']]) ,axis=1).min()
+
+#######Utility Functions##############
+
+def calculate_average(grid,events,norms=None,chans=None):
+        
+        
+    if chans is None:
+        chans = grid.wc()
+    if norms is not None:
+        if len(norms) != len(events):
+            logger.info( 'Number of events and baselines is not equal')
+            return
+        norms.columns = ['baseline.on','baseline.off']
+               
+    maxtimediff = (events['pulse.off']-events['pulse.on']).max()
+    maxtimepoints =  round(maxtimediff*grid.fs())+1
+    data = grid.wd()
+        
+    avrg = np.zeros([len(chans),maxtimepoints])
+        
+    for j,chan in enumerate(chans):
+        logger.info( 'Processing channel '+chan)
+        counter = np.zeros(maxtimepoints)
+        for i,(on,off) in enumerate(events[['pulse.on','pulse.off']].values):
+            sig = grid.splice(data[chan], times=[on,off])
+            bl = norms.iloc[i].values
+            bl = grid.splice(data[chan],times=[bl[0],bl[1]])
+            sig -= bl[:len(sig)].mean()               
+            avrg[j,:len(sig)] += sig
+            counter[:len(sig)] += np.ones(len(sig))
+            avrg[j,:]/=counter
+    return avrg
+    
+    
+def normSignal(grid,frequencies = None,nc=None,dec=None,events=None):
+    #Returns normalised power spectrums for events (using morlet wavelets) [n_epochs,n_channels,n_frequencies]
+    #frequencies - morlet frequencies
+    #nc - number of cycles
+    #dec - decimation
+    #events - events to find power of
+    
+    if frequencies is None:
+        frequencies = np.arange(1,101)
+    if nc is None:
+        nc = 0.12*np.arange(1,len(frequencies)+1) #Linear formula [Chan,Baker et al. JNS 2011]
+        print nc
+    if dec is None:
+        dec = 1
+    if events is None:
+        events=grid.event_matrix()
+        events = events[events['event.code']==5] #Use ISIs as baseline
+     
+    #Pre allocate power matrix for efficiency
+    pows = np.zeros([len(events),len(grid.wc()),len(frequencies)])
+        
+    for j,chan in enumerate(grid.wc()):
+        for i,(on,off) in enumerate(events[['pulse.on','pulse.off']].values):
+            logger.info( 'Normalising power on channel '+chan+' baseline event '+str(i+1)+'/'+str(len(events)))
+            data = grid.splice(grid.wd()[chan],times=[on,off])[None,None,:]
+            data = np.vstack([data,data]) #mne doesn't allow only 1 event so duplicate the same event (which will then be averaged)
+            p,phase=mtf.induced_power(data, Fs=grid.fs(), frequencies=frequencies, use_fft=False, n_cycles=nc, decim=dec, n_jobs=1,normFreqs=None)
+            pows[i,j,:]=p.mean(axis=2).squeeze() #Take average across time for each frequency
+    return pows
+    
+    
+     
+def threshold_crossings(grid,sig=None,events=None,thresh=None,channel=None,tol=0):
+    #Finds the up and down crossings in the signal
+    #sig - signal to be thresholded
+    #thresh - the threshold for a crossing to occur
+    #channel - channel in the signal to be used
+    #boost - Will polarise the signal (i.e Vx > 0 -> x = 1)
+        
+    if sig is None:
+        if channel is not None:
+            sig = grid.wd()[channel]
+        else:
+            sig = grid.wd()['C127']
+        
+    if thresh is None:
+        thresh = sig.mean()
+        print 'Using '+str(thresh)+' as threshold'
+        
+    if events is None:
+        events = grid.event_matrix()                  
+        
+    up_crosses = np.array([])
+    down_crosses = np.array([])
+
+    #plt.figure()
+    #plt.hold(True)
+    for (on,off) in events.values:
+        signal = grid.splice(sig, times=[on-tol[0],off+tol[1]])
+        #plt.plot(signal)
+        ##all points above threshold 
+        above = np.where(signal>=thresh)[0]
+        ##if point one step back is below threshold, its an upcrossing: make sure not to include negative indices
+        indices = above-1  
+        up_cross = above[np.where(signal[indices] < thresh)[0]]+grid.time_to_index(on)
+        
+        ##if point one step ahead is below threshold, its a down-crossing: make sure not to go out of bounds
+        indices = np.asarray(above)+1
+        L = len(signal)
+        indices = indices[indices < L]
+        down_cross = above[np.where(signal[indices] < thresh)[0]]+grid.time_to_index(on)
+        up_crosses = np.hstack((up_crosses,up_cross))
+        down_crosses = np.hstack((down_crosses,down_cross))
+            
+    print 'Found '+str(len(up_crosses))+' up crossings and '+str(len(down_crosses))+' down crossings'
+    up_crosses.sort()
+    down_crosses.sort()
+    return up_crosses, down_crosses
