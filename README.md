@@ -10,7 +10,7 @@ Requirements:
 
 - numpy
 - pandas
-- mne (for format conversion)
+- mne (for format conversion) https://www.nmr.mgh.harvard.edu/martinos/userInfo/data/MNE_register/index.php
 
 
 
