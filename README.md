@@ -16,8 +16,8 @@ Requirements:
 ----------------------------------------
 TODO:
 
--More efficent reading and writing of data in pandas
--selection of data from disk based on blocks
+- More efficent reading and writing of data in pandas
+- Selection of data from disk based on blocks
 
 
 ---------------------------------------
