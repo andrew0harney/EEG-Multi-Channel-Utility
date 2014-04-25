@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from SignalManager import SignalManager
-from SignalManager import show_events_on_chan,photodiode_signal
+from signalUtils import show_events_on_chan,photodiode_signal
 
 
 #Script to check that events are aligned with some independent measurement
