@@ -7,7 +7,6 @@ from SignalManager import SignalManeger
 from gridFT import calcFFT, plot_morlet,morlet
 import pickle 
 
-fs = 2000
 ws = 0.1
 x = np.linspace(-np.pi, np.pi,fs)
 times = np.arange(0,2,1.0/fs)
@@ -23,7 +22,7 @@ events = np.vstack((times,times+0.1,np.zeros(len(times)))).T
 events = pd.DataFrame(events,columns=['pulse.on','pulse.off','event.code'])
 events.to_csv(dataName+'Test_events',columns=['pulse.on','pulse.off','event.code'])
 
-grid = NewBrain(dataName,log_file=dataName+'Test_events',fs=2000)
+grid = NewBrain(dataName,log_file=dataName+'Test_events')
 grid.set_wd(['s1','s2'])
 blocks = pd.DataFrame(np.array([[1,1.9995],[1,1.9995]]),columns=['pulse.on','pulse.off'])
 isi = pd.DataFrame(np.array([[0,0.9995],[0,0.9995]]),columns=['pulse.on','pulse.off'])
