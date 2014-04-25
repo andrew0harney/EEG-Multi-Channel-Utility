@@ -3,11 +3,8 @@ import glob
 import os
 import numpy as np
 import gc
-import mne.time_frequency as mtf
-import matplotlib.pyplot as plt
 import logging
 import mne
-import pdb
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('__SignalManager__')
@@ -61,22 +58,22 @@ class SignalManager:
         #Attempts to load data from .hd5
         #If .hd5 file does not exist, it will try to convert to it
         #
-        try:
-            if self.base_file_name() is None:
-                raise Exception('Data was not specified')
-            elif self.__check_for_files__('hd5'): #HD5 is the basis for pytables
-                logger.info( 'Found .hd5 -- opening')
-            elif self.__check_for_files__('fif'):
-                logger.info( 'Could not find .hd5 -- converting  .fif->.hd5')
-                self.__fif_2_hdf5__()
-            elif self.__check_for_files__('edf'):
-                logger.info( 'Could not find .hd5 -- converting .edf->.fif->.hd5')
-                self.__edf_2_fif__()
-                self.__fif_2_hdf5__()
-            else:
-                logger.info( "Could not find any appropriate files. Valid files are *.[edf, fif, hd5]. Assuming data will be supplied later")
-            self.__open_hdf5__()
-        except Exception as e: raise e
+        #try:
+        if self.base_file_name() is None:
+            raise Exception('Data was not specified')
+        elif self.__check_for_files__('hd5'): #HD5 is the basis for pytables
+            logger.info( 'Found .hd5 -- opening')
+        elif self.__check_for_files__('fif'):
+            logger.info( 'Could not find .hd5 -- converting  .fif->.hd5')
+            self.__fif_2_hdf5__()
+        elif self.__check_for_files__('edf'):
+            logger.info( 'Could not find .hd5 -- converting .edf->.fif->.hd5')
+            self.__edf_2_fif__()
+            self.__fif_2_hdf5__()
+        else:
+            logger.info( "Could not find any appropriate files. Valid files are *.[edf, fif, hd5]. Assuming data will be supplied later")
+        self.__open_hdf5__()
+        #except Exception as e: raise e
 
     def __check_for_files__(self, ftype):
         #Returns a list of files in the local Directory containing the base_file_name
@@ -93,7 +90,7 @@ class SignalManager:
     def __edf_2_fif__(self):
         #Tries to convert edf to fif
         sysString = 'mne_edf2fiff --edf '+self.base_file_name()+'.edf --fif ' + self.base_file_name()+'.fif'
-        logger.debug( sysString)
+        logger.info('System Command : %s'%(sysString))
         try:
             os.system(sysString)
             logger.info( 'Conversion edf->fif complete')
@@ -101,23 +98,18 @@ class SignalManager:
             logger.warning('Could not find mne on system path')
             raise Exception('Could not find mne on system path -- cannot convert from .edf')
     
-    def removeInterBlockSignal(self):
+    def removeNonImportant(self,importantEventCodes):
+        #NEED TO THINK ABOUT THIS ONE
+        pass
         #Will remove parts of the signal not important to the experiment
-          
-        expTimes = self.__exptimes__()
-        self.__signals['Data'] = self.__signals['Data'][[expTimes]]
+        
+        em = self.event_matrix()
+        em = em[em['event.code'].isin(importantEventCodes)]
+        exptimes = self.eventsTimes(em)
+        self.__signals['Data'] = self.__signals['Data'].ix[exptimes]
         self.__signals.flush()
     
-    def __exptimes__(self):
-        #Finds experimental time points only
-        
-        mask = np.zeros(len(self.times()))
-        for on,off in self.blocks().values:
-            on = self.time_to_index(on)
-            off = self.time_to_index(off)
-            mask[on:off] = 1
-        return self.times().ix[mask]
-        
+       
     def __fif_2_hdf5__(self):
         #Tries to convert .fif file to .hd5 format
         
@@ -126,7 +118,7 @@ class SignalManager:
             raw = mne.fiff.Raw(self.__base_file_name+'.fif')
         except:
             logger.warning('Could not open fif file')
-            raise Exception("'Could not open fif file'")
+            raise Exception("Could not open fif file")
         
         logger.debug( 'Extracting data from .fif')
         data,time_stamps = raw[1:,:raw.last_samp]
@@ -135,7 +127,7 @@ class SignalManager:
         fs = raw.info['sfreq']
         logger.debug('Found frequency : %f'%(fs))
         raw.close()
-        self.save_hdf(data,time_stamps,ch_names,np.array(fs,self.base_file_name()))
+        self.save_hdf(data,time_stamps,ch_names,fs,self.base_file_name())
         self.__open_hdf5__()
 
     def __create_events_matrix__(self):
@@ -143,7 +135,6 @@ class SignalManager:
         logger.info( "Generating event matrix")
         events = pd.read_csv(self.__log_file,delimiter='\t')
         logger.debug( 'Found columns:'+str(events.columns))
-        #self.__signals['event_matrix'] = events[['pulse.on','pulse.off','event.code']]
         self.__signals['event_matrix'] = events
         self.__flushSignals__()
         logger.info( "Saving event matrix")
@@ -283,7 +274,7 @@ class SignalManager:
         #Return the mean channel (i.e the mean power across all channels for a given time point)
         #channels - channels to calculate the mean over
     
-        return pd.Series(self.data(columns=channels).mean(axis=1),index=self.times())
+        return pd.Series(self.data(channels=channels).mean(axis=1),index=self.times())
     
     
     def set_mean(self,meanCalcChans=None,meanApplyChans=None):
@@ -303,16 +294,16 @@ class SignalManager:
             return m
         
 
-    def data(self,columns=None):
+    def data(self,channels=None):
         #Efficiently get data chunks from disk by supplying a column list (Note:data must be in table format)
         #Optional: columns - the channels to pull from the data
-        if columns is not None:
+        if channels is not None:
             try:
                 #Efficient read from disk (no need to load all data in memory) if data is in table format
-                d= self.__signals.select('data', [pd.Term('columns','=',columns)])
+                d = self.__signals.select('data', [pd.Term('columns','=',channels)])
             except:
                 #If in pytables format then we need to load all data into memory and clip
-                d= self.__signals['data'][columns]
+                d= self.__signals['data'][channels]
         else:
             d= self.__signals['data']
         
@@ -389,7 +380,7 @@ class SignalManager:
         #          meanApplyChans - The channels to apply the mean to (default = meanCalcChans)
     
         logger.info( "Loading working data")
-        self.__wd = self.data(columns=channels if channels else self.channels())
+        self.__wd = self.data(channels=channels if channels else self.channels())
         self.__wc = channels if channels else self.channels()
 
         if meanCalcChans is not None:
@@ -423,7 +414,7 @@ class SignalManager:
         #events - events to index
         #limit - specify cut-off for each event in seconds
         
-        limit = int(limit*self.fs())
+        limit = None if limit is None else int(limit*self.fs())
         allTimes = np.array([])
         for i in range(len(events)):
             x = self.event_times(event=events.iloc[i])[:limit]
@@ -473,183 +464,3 @@ class SignalManager:
             logger.debug('No event or times were supplied ')
             return None
     
-#######Utility Functions##############
-def photodiode_signal(grid):
-#Generates a photodiode signal from the log file (useful for checking alignment with some independent signal)
-    
-    #Get all white pulse events
-    em = grid.event_matrix()
-    em = em[em['event.code'] != grid.eventsKey()['_']]
-    diodeSignal = pd.Series(np.zeros(len(grid.times())),index=grid.times())
-    
-    #Set all diode pulses on
-    em = em[em['Colour']=='white']
-    for (on,off) in em[['pulse.on','pulse.off']].values:
-        diodeSignal[grid.snap_time(on):grid.snap_time(off)] = 1
-    return pd.Series(diodeSignal,index=grid.times())
-    
-
-    
-
-def mask_inter_block_signal(grid,signal=None):
-    #Returns a zero masked signal (inter-block set to 0)        
-    #signal - signal to mask
-        
-    #Removes inter-block noise from the each channel
-    mask = np.zeros(len(grid.times()))
-    for on,off in grid.blocks().values:
-        on = grid.time_to_index(on)
-        off = grid.time_to_index(off)
-        mask[on:off] = 1
-    return mask*signal
- 
-
-def show_events_on_chan(grid,chan,eventCodes,colours=None):
-#Will highlight event points in a given channel
-#Grid - Signal set to use use
-#chan - channel to highlight points from
-#eventCodes - events to use
-#colours - colours to highlight respective event codes
-
-
-
-    #Plot the base signal
-    signal = grid.data()[chan]
-    plt.plot(signal)    
-    plt.hold(True)
-
-    if colours is None:
-        colours = ['r','b','g','y','p']
-
-    #For each event type highlight the appropriate region in the signal
-    em = grid.event_matrix()
-    for i,event in enumerate(eventCodes):
-        highlight = em[em['event.code']==2] #UPDATE : take function handle for acceptability criteria 
-        blockOnIx = highlight[['pulse.on','pulse.off']].apply(lambda x: [grid.time_to_index(x['pulse.on']), grid.time_to_index(x["pulse.off"])],axis=1)
-        blockOnIx.apply(lambda x: plt.axvspan(x['pulse.on'], x["pulse.off"], facecolor=colours[i%len(colours)], alpha=0.5),axis=1)
-    plt.title('Psychopy/EEG line-up')
-    plt.xlabel('Time (s)')
-    plt.ylabel('EEG')
-
-
-def longest_event(grid,events):
-    #Returns the longest event in events in number of points
-    #events - events
-    return events.apply(lambda x: grid.num_points(times=[x['pulse.on'],x['pulse.off']]) ,axis=1).max()
-
-def shortest_event(grid,events):
-    #Returns the shortes event in events
-    #events - events
-    return events.apply(lambda x: grid.num_points(times=[x['pulse.on'],x['pulse.off']]) ,axis=1).min()
-
-#######Utility Functions##############
-
-def calculate_average(grid,events,norms=None,chans=None):
-        
-        
-    if chans is None:
-        chans = grid.wc()
-    if norms is not None:
-        if len(norms) != len(events):
-            logger.info( 'Number of events and baselines is not equal')
-            return
-        norms.columns = ['baseline.on','baseline.off']
-               
-    maxtimediff = (events['pulse.off']-events['pulse.on']).max()
-    maxtimepoints =  round(maxtimediff*grid.fs())+1
-    data = grid.wd()
-        
-    avrg = np.zeros([len(chans),maxtimepoints])
-        
-    for j,chan in enumerate(chans):
-        logger.info( 'Processing channel '+chan)
-        counter = np.zeros(maxtimepoints)
-        for i,(on,off) in enumerate(events[['pulse.on','pulse.off']].values):
-            sig = grid.splice(data[chan], times=[on,off])
-            bl = norms.iloc[i].values
-            bl = grid.splice(data[chan],times=[bl[0],bl[1]])
-            sig -= bl[:len(sig)].mean()               
-            avrg[j,:len(sig)] += sig
-            counter[:len(sig)] += np.ones(len(sig))
-            avrg[j,:]/=counter
-    return avrg
-    
-    
-def normSignal(grid,frequencies = None,nc=None,dec=None,events=None):
-    #Returns normalised power spectrums for events (using morlet wavelets) [n_epochs,n_channels,n_frequencies]
-    #frequencies - morlet frequencies
-    #nc - number of cycles
-    #dec - decimation
-    #events - events to find power of
-    
-    if frequencies is None:
-        frequencies = np.arange(1,101)
-    if nc is None:
-        nc = 0.12*np.arange(1,len(frequencies)+1) #Linear formula [Chan,Baker et al. JNS 2011]
-        print nc
-    if dec is None:
-        dec = 1
-    if events is None:
-        events=grid.event_matrix()
-        events = events[events['event.code']==5] #Use ISIs as baseline
-     
-    #Pre allocate power matrix for efficiency
-    pows = np.zeros([len(events),len(grid.wc()),len(frequencies)])
-        
-    for j,chan in enumerate(grid.wc()):
-        for i,(on,off) in enumerate(events[['pulse.on','pulse.off']].values):
-            logger.info( 'Normalising power on channel '+chan+' baseline event '+str(i+1)+'/'+str(len(events)))
-            data = grid.splice(grid.wd()[chan],times=[on,off])[None,None,:]
-            data = np.vstack([data,data]) #mne doesn't allow only 1 event so duplicate the same event (which will then be averaged)
-            p,phase=mtf.induced_power(data, Fs=grid.fs(), frequencies=frequencies, use_fft=False, n_cycles=nc, decim=dec, n_jobs=1,normFreqs=None)
-            pows[i,j,:]=p.mean(axis=2).squeeze() #Take average across time for each frequency
-    return pows
-    
-    
-     
-def threshold_crossings(grid,sig=None,events=None,thresh=None,channel=None,tol=0):
-    #Finds the up and down crossings in the signal
-    #sig - signal to be thresholded
-    #thresh - the threshold for a crossing to occur
-    #channel - channel in the signal to be used
-    #boost - Will polarise the signal (i.e Vx > 0 -> x = 1)
-        
-    if sig is None:
-        if channel is not None:
-            sig = grid.wd()[channel]
-        else:
-            sig = grid.wd()['C127']
-        
-    if thresh is None:
-        thresh = sig.mean()
-        print 'Using '+str(thresh)+' as threshold'
-        
-    if events is None:
-        events = grid.event_matrix()                  
-        
-    up_crosses = np.array([])
-    down_crosses = np.array([])
-
-    #plt.figure()
-    #plt.hold(True)
-    for (on,off) in events.values:
-        signal = grid.splice(sig, times=[on-tol[0],off+tol[1]])
-        #plt.plot(signal)
-        ##all points above threshold 
-        above = np.where(signal>=thresh)[0]
-        ##if point one step back is below threshold, its an upcrossing: make sure not to include negative indices
-        indices = above-1  
-        up_cross = above[np.where(signal[indices] < thresh)[0]]+grid.time_to_index(on)
-        
-        ##if point one step ahead is below threshold, its a down-crossing: make sure not to go out of bounds
-        indices = np.asarray(above)+1
-        L = len(signal)
-        indices = indices[indices < L]
-        down_cross = above[np.where(signal[indices] < thresh)[0]]+grid.time_to_index(on)
-        up_crosses = np.hstack((up_crosses,up_cross))
-        down_crosses = np.hstack((down_crosses,down_cross))
-            
-    print 'Found '+str(len(up_crosses))+' up crossings and '+str(len(down_crosses))+' down crossings'
-    up_crosses.sort()
-    down_crosses.sort()
-    return up_crosses, down_crosses
