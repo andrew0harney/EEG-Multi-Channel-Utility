@@ -1,9 +1,10 @@
+#Warning - this code was written for previous versions of signalManager and may now be incompatable
 import numpy as np
 import matplotlib.pyplot as plt
 import tables
 import pandas as pd
-from andyClasses.NewBrain import NewBrain
-from andyClasses.gridFT import calcFFT, plot_morlet,morlet
+from SignalManager import SignalManeger
+from gridFT import calcFFT, plot_morlet,morlet
 import pickle 
 
 fs = 2000

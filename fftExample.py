@@ -1,8 +1,10 @@
+#Warning - this code was written for previous versions of signalManager and may now be incompatable
+
 import numpy as np
 import pandas as pd
-from andyClasses.NewBrain2 import NewBrain
-from andyClasses.gridFT import calcFFT
-from andyClasses.NewBrain2 import longest_event
+from SignalManager import SignalManager
+from gridFT import calcFFT
+from SignalManager import longest_event
 import matplotlib.pyplot as plt
 
 

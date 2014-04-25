@@ -10,8 +10,14 @@ Requirements:
 
 - numpy
 - pandas
-- mne (for format conversion)
+- mne (for format conversion) https://www.nmr.mgh.harvard.edu/martinos/userInfo/data/MNE_register/index.php
 
+
+----------------------------------------
+TODO:
+
+- More efficent reading and writing of data in pandas
+- Selection of data from disk based on blocks
 
 
 ---------------------------------------
