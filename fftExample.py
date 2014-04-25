@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 from SignalManager import SignalManager
 from gridFT import calcFFT
-from SignalManager import longest_event
+from signalUtils import longest_event
 import matplotlib.pyplot as plt
 
 
