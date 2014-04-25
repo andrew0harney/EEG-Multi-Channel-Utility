@@ -8,7 +8,6 @@ from signalUtils import longest_event
 import matplotlib.pyplot as plt
 
 
-fs = 500
 delta = 0.001
 ws = 0.1
 x = np.linspace(-np.pi, np.pi,fs)
@@ -29,7 +28,7 @@ events.to_csv(dataName+'test_events.csv',columns=['pulse.on','pulse.off','event.
 
 dataName= 'PeriodicSTFT'
 fs = 500
-grid = NewBrain(dataName,log_file=dataName+'test_events.csv',fs=500)
+grid = NewBrain(dataName,log_file=dataName+'test_events.csv')
 grid.set_wd(['s1','s2','s3'])
 
 em = grid.event_matrix()
