@@ -202,7 +202,7 @@ def stft(grid,ws,delta,sigs=None,fs=None,events=None):
     return powMap
 
 def calcFFT(grid,events,ws=None):
-    from andyClasses.NewBrain2 import shortest_event
+    from signalUtils import shortest_event
     
     if ws is None:
         ws = shortest_event(grid,events)
