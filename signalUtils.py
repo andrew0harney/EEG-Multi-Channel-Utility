@@ -7,9 +7,71 @@ import pandas as pd
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger('__GridUtils__')
 
-#######Utility Functions##############
-def photodiode_signal(grid,channel=['C127'],onEvents=None):
-#Generates a photodiode signal from the log file (useful for checking alignment with some independent signal)
+"""Utility functions for events and signals"""
+__author__ = 'Andrew O\'Harney'
+
+"""Normalisation Functions"""
+def meanDesign(self,events):
+    """Calculates the mean on columns of the full events matrix
+    Keyword Arguments:
+    events -- Events to find mean signal of"""
+    logger.info('Calculating design mean')
+    designMean = np.zeros(self.nPoints())
+    design = self.__iterX__(events)
+    N = 0
+    for X,times in design:
+        designMean += np.sum(X[:self.__longestEvent__,:],axis=0)
+        N += len(times)
+    return designMean / N
+
+def l1Norm(self,events):
+    """Calculates the l1 normalisation parameter on columns of the design matrix
+    Keyword Arguments:
+    events -- Events to find mean signal of"""
+    
+    logger.info('Calculating l1Norm')
+    l1 = np.zeros(self.nPoints())
+    design = self.__iterX__(events)
+    for X,_ in design:
+        l1 += np.sum(np.abs(X[:self.__longestEvent__,:]),axis=0)    
+    return np.sqrt(l1)
+
+def l2Norm(self,events):
+    """L2 norm for real valued event matrix
+    Keyword Arguments:
+    events -- Events to find mean signal of"""
+    
+    logger.info('Calculating l2Norm')
+    l2 = np.zeros(self.nPoints())
+    design = self.__iterX__(events)
+    for X,_ in design:
+        l2 += np.sum(X[:self.__longestEvent__,:]**2,axis=0)    
+    return np.sqrt(l2)
+    
+def varDesign(self,events,mean=None):
+    """Calculates variance on columns of design matrix
+    Keyword Arguments:
+    events -- Events to find mean signal of
+    mean=None -- Mean of events (will be calculated if not supplied)"""
+    
+    if mean is None:
+        mean = self.meanDesign(events)
+
+    logger.info('Calculating design variance')
+    designVar = np.zeros(self.nPoints())
+    design = self.__iterX__(events)
+    N = 0
+    for X,times in design:
+        designVar += np.sum((X[:self.__longestEvent__]-mean)**2,axis=0)
+        N += len(times)
+    return designVar / (N-1)
+
+
+"""Utility Functions"""
+def photodiode_signal(grid,onEvents=None):
+    """Generates a photodiode signal from the log file (useful for checking alignment with some independent signal)
+    Keyword Arguments:
+    onEvents -- Event codes to use as on periods for photodiode """
     
     if onEvents is None:
         logger.info('Must specify the on events of the photodiode')
@@ -28,8 +90,9 @@ def photodiode_signal(grid,channel=['C127'],onEvents=None):
 
 
 def mask_inter_block_signal(grid,signal=None):
-    #Returns a zero masked signal (inter-block set to 0)        
-    #signal - signal to mask
+    """Returns a zero masked signal (inter-block set to 0)        
+    Keyword Arguments:
+    signal -- Signal to mask"""
         
     #Removes inter-block noise from the each channel
     mask = np.zeros(len(grid.times()))
@@ -41,13 +104,12 @@ def mask_inter_block_signal(grid,signal=None):
  
 
 def show_events_on_chan(grid,chan,eventCodes,colours=None):
-#Will highlight event points in a given channel
-#Grid - Signal set to use use
-#chan - channel to highlight points from
-#eventCodes - events to use
-#colours - colours to highlight respective event codes
-
-
+    """Will highlight event points in a given channel
+    Keyword Arguments:
+    grid - Signal set to use use
+    chan -- Channel to highlight points from
+    eventCodes -- Events to use
+    colours=None -- Colours to highlight respective event codes"""
 
     #Plot the base signal
     signal = grid.data()[chan]
@@ -69,19 +131,22 @@ def show_events_on_chan(grid,chan,eventCodes,colours=None):
 
 
 def longest_event(grid,events):
-    #Returns the longest event in events in number of points
-    #events - events
+    """Returns the longest event in events in number of points
+    events - Events to find maximum of"""
     return events.apply(lambda x: grid.num_points(times=[x['pulse.on'],x['pulse.off']]) ,axis=1).max()
 
 def shortest_event(grid,events):
-    #Returns the shortest event in events
-    #events - events
+    """Returns the shortest event in events
+    events - Events to find shortest of"""
     return events.apply(lambda x: grid.num_points(times=[x['pulse.on'],x['pulse.off']]) ,axis=1).min()
 
-#######Utility Functions##############
 
 def calculate_average(grid,events,norms=None,chans=None):
-        
+    """Calculates the average signal of the events
+    Keyword Arguments:
+    events -- Events to find me of
+    norms=None -- Normalisationed events
+    chans=None -- Channels to perform operation on"""
         
     if chans is None:
         chans = grid.wc()
@@ -112,11 +177,11 @@ def calculate_average(grid,events,norms=None,chans=None):
     
     
 def normSignal(grid,frequencies = None,nc=None,dec=None,events=None):
-    #Returns normalised power spectrums for events (using morlet wavelets) [n_epochs,n_channels,n_frequencies]
-    #frequencies - morlet frequencies
-    #nc - number of cycles
-    #dec - decimation
-    #events - events to find power of
+    """Returns normalised power spectrums for events (using morlet wavelets) [n_epochs,n_channels,n_frequencies]
+    frequencies -- Morlet frequencies
+    nc -- Number of cycles (DEFAULT 12*np.arange(1,len(frequencies)+1) #Linear formula [Chan,Baker et al. JNS 2011])
+    Dec -- Decimation factor
+    Events - events to find power of"""
     
     if frequencies is None:
         frequencies = np.arange(1,101)
@@ -144,11 +209,11 @@ def normSignal(grid,frequencies = None,nc=None,dec=None,events=None):
     
      
 def threshold_crossings(grid,sig=None,events=None,thresh=None,channel='C127',tol=0):
-    #Finds the up and down crossings in the signal
-    #sig - signal to be thresholded
-    #thresh - the threshold for a crossing to occur
-    #channel - channel in the signal to be used
-    #boost - Will polarise the signal (i.e Vx > 0 -> x = 1)
+    """Finds the up and down crossings in the signal
+    sig - Signal to be thresholded
+    thresh - The threshold for a crossing to occur
+    channel - Channel in the signal to be used
+    boost - Will polarise the signal (i.e Vx > 0 -> x = 1)"""
         
     if sig is None:
         if channel is not None:
