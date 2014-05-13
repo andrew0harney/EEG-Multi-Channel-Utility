@@ -1,0 +1,213 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<html><head><title>Python: module SignalManager</title>
+</head><body bgcolor="#f0f0f8">
+
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="heading">
+<tr bgcolor="#7799ee">
+<td valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial">&nbsp;<br><big><big><strong>SignalManager</strong></big></big></font></td
+><td align=right valign=bottom
+><font color="#ffffff" face="helvetica, arial"><a href=".">index</a><br><a href="file:/mnt/data/workspace/andy/ecog/andyClasses/SignalManager.py">/mnt/data/workspace/andy/ecog/andyClasses/SignalManager.py</a></font></td></tr></table>
+    <p></p>
+<p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#aa55cc">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Modules</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#aa55cc"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><table width="100%" summary="list"><tr><td width="25%" valign=top><a href="gc.html">gc</a><br>
+<a href="glob.html">glob</a><br>
+</td><td width="25%" valign=top><a href="logging.html">logging</a><br>
+<a href="mne.html">mne</a><br>
+</td><td width="25%" valign=top><a href="numpy.html">numpy</a><br>
+<a href="os.html">os</a><br>
+</td><td width="25%" valign=top><a href="pandas.html">pandas</a><br>
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ee77aa">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Classes</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#ee77aa"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><dl>
+<dt><font face="helvetica, arial"><a href="SignalManager.html#SignalManager">SignalManager</a>
+</font></dt></dl>
+ <p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#ffc8d8">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#000000" face="helvetica, arial"><a name="SignalManager">class <strong>SignalManager</strong></a></font></td></tr>
+    
+<tr bgcolor="#ffc8d8"><td rowspan=2><tt>&nbsp;&nbsp;&nbsp;</tt></td>
+<td colspan=2><tt>This&nbsp;class&nbsp;manages&nbsp;signals&nbsp;in&nbsp;edf,fif,or&nbsp;hd5&nbsp;format&nbsp;(note&nbsp;all&nbsp;files&nbsp;are&nbsp;converted&nbsp;to&nbsp;hd5)<br>
+It&nbsp;makes&nbsp;extensive&nbsp;use&nbsp;of&nbsp;pandas&nbsp;to&nbsp;represent&nbsp;time&nbsp;series&nbsp;and&nbsp;events&nbsp;logs<br>&nbsp;</tt></td></tr>
+<tr><td>&nbsp;</td>
+<td width="100%">Methods defined here:<br>
+<dl><dt><a name="SignalManager-__check_for_files__"><strong>__check_for_files__</strong></a>(self, ftype)</dt><dd><tt>Returns&nbsp;a&nbsp;list&nbsp;of&nbsp;files&nbsp;in&nbsp;the&nbsp;local&nbsp;Directory&nbsp;containing&nbsp;the&nbsp;file&nbsp;type<br>
+Keyword&nbsp;Arguments:<br>
+ftype&nbsp;--&nbsp;Type&nbsp;of&nbsp;file&nbsp;to&nbsp;check&nbsp;for</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-__create_events_matrix__"><strong>__create_events_matrix__</strong></a>(self)</dt><dd><tt>Creates&nbsp;a&nbsp;Dataframe&nbsp;with&nbsp;index=data&nbsp;timestamps&nbsp;times,&nbsp;columns=signal&nbsp;channels</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-__edf_2_fif__"><strong>__edf_2_fif__</strong></a>(self)</dt><dd><tt>"Tries&nbsp;to&nbsp;convert&nbsp;edf&nbsp;to&nbsp;fif</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-__fif_2_hdf5__"><strong>__fif_2_hdf5__</strong></a>(self)</dt><dd><tt>Tries&nbsp;to&nbsp;convert&nbsp;.fif&nbsp;file&nbsp;to&nbsp;.hd5&nbsp;format</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-__find_blocks__"><strong>__find_blocks__</strong></a>(self)</dt><dd><tt>Finds&nbsp;the&nbsp;on&nbsp;and&nbsp;off&nbsp;times&nbsp;of&nbsp;blocks<br>
+Note:&nbsp;Blocks&nbsp;are&nbsp;defined&nbsp;as&nbsp;starting&nbsp;at&nbsp;event&nbsp;types&nbsp;blockStart(event&nbsp;id&nbsp;1)</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-__flushSignals__"><strong>__flushSignals__</strong></a>(self)</dt><dd><tt>"Forces&nbsp;a&nbsp;write&nbsp;to&nbsp;the&nbsp;hdf&nbsp;file</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-__init__"><strong>__init__</strong></a>(self, base_file_name<font color="#909090">=None</font>, log_file<font color="#909090">=None</font>, offsets<font color="#909090">=None</font>, new_log_out<font color="#909090">=False</font>, eventsKey<font color="#909090">=None</font>)</dt><dd><tt>Initialiser&nbsp;takes&nbsp;the&nbsp;path&nbsp;of&nbsp;the&nbsp;signal&nbsp;data<br>
+#Can&nbsp;also&nbsp;set&nbsp;the&nbsp;event&nbsp;matrix&nbsp;or&nbsp;generate&nbsp;it&nbsp;from&nbsp;a&nbsp;log&nbsp;path<br>
+&nbsp;<br>
+Keyword&nbsp;arguments:<br>
+base_file_name=None&nbsp;--&nbsp;The&nbsp;path&nbsp;and&nbsp;name&nbsp;of&nbsp;the&nbsp;signal&nbsp;data&nbsp;with&nbsp;no&nbsp;file&nbsp;extension<br>
+log_file=None&nbsp;--&nbsp;Path&nbsp;to&nbsp;log&nbsp;file&nbsp;of&nbsp;events<br>
+offsets=None&nbsp;--&nbsp;If&nbsp;a&nbsp;log&nbsp;file&nbsp;has&nbsp;been&nbsp;provided,&nbsp;startimes&nbsp;is&nbsp;a&nbsp;path&nbsp;to&nbsp;a&nbsp;file&nbsp;containing&nbsp;appropriate&nbsp;offets&nbsp;for&nbsp;each&nbsp;block&nbsp;of&nbsp;events&nbsp;(if&nbsp;required&nbsp;-&nbsp;often&nbsp;useful&nbsp;for&nbsp;alignment)<br>
+new_log_out=None&nbsp;--&nbsp;If&nbsp;offsets&nbsp;is&nbsp;specified&nbsp;then&nbsp;new_log_out&nbsp;is&nbsp;a&nbsp;Boolean&nbsp;value&nbsp;if&nbsp;the&nbsp;corrected&nbsp;file&nbsp;is&nbsp;to&nbsp;be&nbsp;output<br>
+eventsKey=None&nbsp;--&nbsp;If&nbsp;special&nbsp;event&nbsp;codes&nbsp;are&nbsp;required&nbsp;(i.e&nbsp;not&nbsp;from&nbsp;the&nbsp;csv&nbsp;file)</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-__load_data__"><strong>__load_data__</strong></a>(self)</dt><dd><tt>Attempts&nbsp;to&nbsp;load&nbsp;data&nbsp;from&nbsp;.hd5<br>
+If&nbsp;.hd5&nbsp;file&nbsp;does&nbsp;not&nbsp;exist,&nbsp;it&nbsp;will&nbsp;try&nbsp;to&nbsp;convert&nbsp;to&nbsp;it</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-__open_hdf5__"><strong>__open_hdf5__</strong></a>(self)</dt><dd><tt>Tries&nbsp;to&nbsp;open&nbsp;hd5&nbsp;file</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-add_channel"><strong>add_channel</strong></a>(self, sig, name)</dt><dd><tt>Adds&nbsp;a&nbsp;channel&nbsp;to&nbsp;the&nbsp;hd5&nbsp;file<br>
+&nbsp;<br>
+Keyword&nbsp;Arguments:<br>
+sig&nbsp;--&nbsp;the&nbsp;raw&nbsp;signal&nbsp;to&nbsp;be&nbsp;added<br>
+name&nbsp;--&nbsp;name&nbsp;of&nbsp;the&nbsp;new&nbsp;channel</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-base_file_name"><strong>base_file_name</strong></a>(self)</dt><dd><tt>Return&nbsp;the&nbsp;base&nbsp;file&nbsp;path</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-blocks"><strong>blocks</strong></a>(self)</dt><dd><tt>Return&nbsp;the&nbsp;on&nbsp;and&nbsp;off&nbsp;times&nbsp;of&nbsp;blocks</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-calc_mean"><strong>calc_mean</strong></a>(self, channels)</dt><dd><tt>Return&nbsp;the&nbsp;mean&nbsp;channel&nbsp;(i.e&nbsp;the&nbsp;mean&nbsp;power&nbsp;across&nbsp;all&nbsp;channels&nbsp;for&nbsp;a&nbsp;given&nbsp;time&nbsp;point)<br>
+channels&nbsp;--&nbsp;Channels&nbsp;to&nbsp;calculate&nbsp;the&nbsp;mean&nbsp;over</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-channels"><strong>channels</strong></a>(self)</dt><dd><tt>Returns&nbsp;all&nbsp;channel&nbsp;names</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-correct_event_times"><strong>correct_event_times</strong></a>(self, offsets, new_log_out<font color="#909090">=False</font>)</dt><dd><tt>Correct&nbsp;the&nbsp;event&nbsp;matrix&nbsp;to&nbsp;include&nbsp;the&nbsp;appropriate&nbsp;block&nbsp;offsets<br>
+#Keyword&nbsp;Arguments<br>
+Offsets&nbsp;--&nbsp;A&nbsp;Pandas&nbsp;Dataframe&nbsp;or&nbsp;Series&nbsp;with&nbsp;['time']&nbsp;offsets&nbsp;for&nbsp;each&nbsp;block<br>
+new_log_out=None&nbsp;--&nbsp;Boolean&nbsp;value&nbsp;if&nbsp;the&nbsp;corrected&nbsp;file&nbsp;is&nbsp;to&nbsp;be&nbsp;output</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-data"><strong>data</strong></a>(self, channels<font color="#909090">=None</font>)</dt><dd><tt>Efficiently&nbsp;get&nbsp;data&nbsp;chunks&nbsp;from&nbsp;disk&nbsp;by&nbsp;supplying&nbsp;a&nbsp;column&nbsp;list&nbsp;(Note:data&nbsp;must&nbsp;be&nbsp;in&nbsp;table&nbsp;format)<br>
+Keyword&nbsp;Arguments:&nbsp;<br>
+channels=None&nbsp;--&nbsp;The&nbsp;channels&nbsp;to&nbsp;pull&nbsp;from&nbsp;the&nbsp;data&nbsp;(This&nbsp;should&nbsp;be&nbsp;done&nbsp;efficiently&nbsp;but&nbsp;needs&nbsp;to&nbsp;be&nbsp;reviewed)</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-event_data"><strong>event_data</strong></a>(self, event, chans<font color="#909090">=None</font>)</dt><dd><tt>Returns&nbsp;the&nbsp;data&nbsp;for&nbsp;a&nbsp;given&nbsp;event<br>
+Keyword&nbsp;Arguments:<br>
+event&nbsp;--&nbsp;Event&nbsp;to&nbsp;get&nbsp;data&nbsp;from<br>
+chans=None&nbsp;--&nbsp;Channels&nbsp;to&nbsp;get&nbsp;from</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-event_matrix"><strong>event_matrix</strong></a>(self, types<font color="#909090">=None</font>)</dt><dd><tt>Returns&nbsp;the&nbsp;event&nbsp;matrix<br>
+&nbsp;<br>
+Keyword&nbsp;Arguments:<br>
+types&nbsp;--&nbsp;Event&nbsp;types&nbsp;(codes&nbsp;to&nbsp;return)&nbsp;-&nbsp;Still&nbsp;to&nbsp;be&nbsp;implemented</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-event_times"><strong>event_times</strong></a>(self, event<font color="#909090">=None</font>, times<font color="#909090">=None</font>)</dt><dd><tt>Returns&nbsp;a&nbsp;full&nbsp;list&nbsp;of&nbsp;event&nbsp;sample&nbsp;times<br>
+Keyword&nbsp;Arguments:<br>
+event=None&nbsp;--&nbsp;Event&nbsp;to&nbsp;retrieve&nbsp;time&nbsp;points&nbsp;of<br>
+times=None&nbsp;--&nbsp;Start&nbsp;and&nbsp;stop&nbsp;times&nbsp;to&nbsp;find&nbsp;times&nbsp;between</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-eventsKey"><strong>eventsKey</strong></a>(self)</dt><dd><tt>Get&nbsp;events&nbsp;key</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-eventsTimes"><strong>eventsTimes</strong></a>(self, events, limit<font color="#909090">=None</font>)</dt><dd><tt>Get&nbsp;combined&nbsp;time&nbsp;indices&nbsp;of&nbsp;each&nbsp;event&nbsp;period<br>
+events&nbsp;-&nbsp;Events&nbsp;to&nbsp;index<br>
+limit=None&nbsp;-&nbsp;Specify&nbsp;cut-off&nbsp;for&nbsp;each&nbsp;event&nbsp;in&nbsp;seconds</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-fs"><strong>fs</strong></a>(self)</dt><dd><tt>Return&nbsp;the&nbsp;sample&nbsp;rate&nbsp;of&nbsp;the&nbsp;signal</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-index_to_time"><strong>index_to_time</strong></a>(self, ix)</dt><dd><tt>Returns&nbsp;the&nbsp;time&nbsp;of&nbsp;a&nbsp;given&nbsp;index<br>
+Keyword&nbsp;Arguments:<br>
+ix&nbsp;-&nbsp;Index&nbsp;of&nbsp;time</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-log_file_name"><strong>log_file_name</strong></a>(self)</dt><dd><tt>"Returns&nbsp;the&nbsp;log&nbsp;path&nbsp;of&nbsp;the&nbsp;psychopy&nbsp;file&nbsp;in&nbsp;use&nbsp;(i.e&nbsp;the&nbsp;file&nbsp;the&nbsp;event_matrix&nbsp;was&nbsp;generated&nbsp;from)</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-num_points"><strong>num_points</strong></a>(self, event<font color="#909090">=None</font>, times<font color="#909090">=None</font>)</dt><dd><tt>Returns&nbsp;the&nbsp;number&nbsp;of&nbsp;(inclusive)&nbsp;samples&nbsp;between&nbsp;two&nbsp;data&nbsp;points<br>
+Keyword&nbsp;Arguments:<br>
+event&nbsp;--&nbsp;Event&nbsp;to&nbsp;get&nbsp;number&nbsp;of&nbsp;points&nbsp;of<br>
+times&nbsp;--&nbsp;start&nbsp;and&nbsp;stop&nbsp;time&nbsp;to&nbsp;get&nbsp;number&nbsp;of&nbsp;points&nbsp;between</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-removeNonImportant"><strong>removeNonImportant</strong></a>(self, importantEventCodes)</dt></dl>
+
+<dl><dt><a name="SignalManager-remove_channel"><strong>remove_channel</strong></a>(self, chan)</dt><dd><tt>Removes&nbsp;channel&nbsp;chan&nbsp;from&nbsp;the&nbsp;persistent&nbsp;.hd5&nbsp;file<br>
+Keyword&nbsp;Arguments:<br>
+chan&nbsp;--&nbsp;Channel&nbsp;to&nbsp;be&nbsp;removed</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-set_eventsKey"><strong>set_eventsKey</strong></a>(self, eventsKey)</dt><dd><tt>Set&nbsp;a&nbsp;dictionary&nbsp;containing&nbsp;event&nbsp;code&nbsp;descriptions<br>
+Keyword&nbsp;Arguments:<br>
+eventsKey&nbsp;--&nbsp;Dictionary&nbsp;containing&nbsp;event&nbsp;codes&nbsp;and&nbsp;label&nbsp;names</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-set_fs"><strong>set_fs</strong></a>(self, fs)</dt><dd><tt>Set&nbsp;the&nbsp;frequency&nbsp;that&nbsp;the&nbsp;data&nbsp;was&nbsp;sampled&nbsp;at<br>
+Keyword&nbsp;Arguments:<br>
+fs&nbsp;--&nbsp;sample&nbsp;frequency</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-set_log_file"><strong>set_log_file</strong></a>(self, log, offsets<font color="#909090">=None</font>, new_log_out<font color="#909090">=False</font>)</dt><dd><tt>Sets&nbsp;the&nbsp;psychopy&nbsp;log&nbsp;file<br>
+&nbsp;<br>
+Keyword&nbsp;Arguments:&nbsp;<br>
+log&nbsp;--&nbsp;path&nbsp;to&nbsp;log&nbsp;file<br>
+offsets=None&nbsp;--&nbsp;path&nbsp;to&nbsp;file&nbsp;contains&nbsp;offsets&nbsp;of&nbsp;block&nbsp;times<br>
+new_log_out=False&nbsp;--&nbsp;Boolean&nbsp;value&nbsp;if&nbsp;the&nbsp;corrected&nbsp;file&nbsp;is&nbsp;to&nbsp;be&nbsp;output</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-set_mean"><strong>set_mean</strong></a>(self, meanCalcChans<font color="#909090">=None</font>, meanApplyChans<font color="#909090">=None</font>)</dt><dd><tt>Remove&nbsp;a&nbsp;mean&nbsp;value&nbsp;from&nbsp;channels<br>
+meanCalcChans=None&nbsp;:&nbsp;channels&nbsp;to&nbsp;calculate&nbsp;the&nbsp;mean&nbsp;from&nbsp;-&nbsp;mean&nbsp;will&nbsp;be&nbsp;applied&nbsp;to&nbsp;these&nbsp;channels&nbsp;unless&nbsp;meanApplyChans&nbsp;is&nbsp;specified<br>
+meanApplyChans=None&nbsp;:&nbsp;channels&nbsp;to&nbsp;apply&nbsp;the&nbsp;mean&nbsp;to&nbsp;&nbsp;(default&nbsp;is&nbsp;meanCalcChans)</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-set_wd"><strong>set_wd</strong></a>(self, channels<font color="#909090">=None</font>, meanCalcChans<font color="#909090">=None</font>, meanApplyChans<font color="#909090">=None</font>)</dt><dd><tt>Sets&nbsp;the&nbsp;working&nbsp;data&nbsp;to&nbsp;the&nbsp;selected&nbsp;channels&nbsp;(selects&nbsp;all&nbsp;channels&nbsp;by&nbsp;default)<br>
+Keyword&nbsp;Arguments:<br>
+channels=None&nbsp;--&nbsp;list&nbsp;of&nbsp;channels&nbsp;to&nbsp;use<br>
+meanChans=None&nbsp;--&nbsp;The&nbsp;channels&nbsp;to&nbsp;calculate&nbsp;the&nbsp;mean&nbsp;from<br>
+meanApplyChans=None&nbsp;-&nbsp;The&nbsp;channels&nbsp;to&nbsp;apply&nbsp;the&nbsp;mean&nbsp;to&nbsp;(default&nbsp;=&nbsp;meanCalcChans)</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-snap_time"><strong>snap_time</strong></a>(self, t)</dt><dd><tt>Finds&nbsp;the&nbsp;nearest&nbsp;time<br>
+Keyword&nbsp;Arguments:<br>
+t&nbsp;-&nbsp;Time&nbsp;to&nbsp;snap&nbsp;to</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-splice"><strong>splice</strong></a>(self, data<font color="#909090">=None</font>, times<font color="#909090">=None</font>, indices<font color="#909090">=None</font>)</dt><dd><tt>Returns&nbsp;the&nbsp;signal&nbsp;specified&nbsp;between&nbsp;two&nbsp;time&nbsp;points<br>
+data=None&nbsp;--&nbsp;The&nbsp;data&nbsp;to&nbsp;splice&nbsp;(default&nbsp;is&nbsp;the&nbsp;whole&nbsp;data&nbsp;set)<br>
+times=None&nbsp;--&nbsp;The&nbsp;start&nbsp;and&nbsp;end&nbsp;times&nbsp;to&nbsp;splice&nbsp;between<br>
+indices=None&nbsp;--&nbsp;The&nbsp;start&nbsp;and&nbsp;end&nbsp;indices</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-time_to_index"><strong>time_to_index</strong></a>(self, t)</dt><dd><tt>Returns&nbsp;the&nbsp;index&nbsp;of&nbsp;a&nbsp;given&nbsp;time&nbsp;point<br>
+Keyword&nbsp;Arguments:<br>
+t&nbsp;--&nbsp;Time&nbsp;point</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-times"><strong>times</strong></a>(self)</dt><dd><tt>Returns&nbsp;the&nbsp;timestamps&nbsp;of&nbsp;samples</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-wc"><strong>wc</strong></a>(self)</dt><dd><tt>Returns&nbsp;a&nbsp;list&nbsp;of&nbsp;channel&nbsp;names&nbsp;for&nbsp;the&nbsp;working&nbsp;data</tt></dd></dl>
+
+<dl><dt><a name="SignalManager-wd"><strong>wd</strong></a>(self, channels<font color="#909090">=None</font>)</dt><dd><tt>Return&nbsp;the&nbsp;current&nbsp;working&nbsp;data<br>
+Keyword&nbsp;arguments:<br>
+channels=None&nbsp;--&nbsp;Channels&nbsp;to&nbsp;pull&nbsp;from&nbsp;working&nbsp;data</tt></dd></dl>
+
+<hr>
+Static methods defined here:<br>
+<dl><dt><a name="SignalManager-save_hdf"><strong>save_hdf</strong></a>(data, times, cnames, fs, base_file_name)</dt><dd><tt>Takes&nbsp;raw&nbsp;data&nbsp;and&nbsp;saves&nbsp;to&nbsp;HD5<br>
+Keyword&nbsp;arguments:<br>
+#data&nbsp;-&nbsp;raw&nbsp;signal&nbsp;data<br>
+#cnames&nbsp;-&nbsp;channel&nbsp;names<br>
+#base_file_name&nbsp;-&nbsp;base&nbsp;file&nbsp;name<br>
+#fs&nbsp;-&nbsp;sample&nbsp;rate&nbsp;of&nbsp;data</tt></dd></dl>
+
+</td></tr></table></td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#55aa55">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Data</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#55aa55"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%"><strong>__author__</strong> = "Andrew O'Harney"<br>
+<strong>logger</strong> = &lt;logging.Logger object&gt;</td></tr></table><p>
+<table width="100%" cellspacing=0 cellpadding=2 border=0 summary="section">
+<tr bgcolor="#7799ee">
+<td colspan=3 valign=bottom>&nbsp;<br>
+<font color="#ffffff" face="helvetica, arial"><big><strong>Author</strong></big></font></td></tr>
+    
+<tr><td bgcolor="#7799ee"><tt>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</tt></td><td>&nbsp;</td>
+<td width="100%">Andrew&nbsp;O'Harney</td></tr></table>
+</body></html>
