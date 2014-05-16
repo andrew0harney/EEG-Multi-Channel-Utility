@@ -3,7 +3,7 @@
 (To those who pick up the project...whoever you may be!)
 
 All code was written in Eclipse with the pydev plugin.
-The Enthought Canopoy python package manager was used, although other environments such as anaconda could work equally as well.
+The Enthought Canopoy python package manager was used, although other environments such as Anaconda could work equally as well.
 
 
 If you intend to use a package manager or otherwise some virtualenv I recommend adding the python lib to your PYTHONPATH if you intend to go on using your default python enviroment. 
