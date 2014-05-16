@@ -1,7 +1,7 @@
 Multi-channel-management-utility
 ================================
 
-The SignalManager class is the main class used for managing multi-channel signals and events in those signals. It has a number of useful functions for loading, splicing, controlling timing ect based on events, and for aligning the data with event epochs in the first place. See the docs folder for the API for this class. It also provides automatic conversion of file format from .edf or .fiff to .hd5. Most of the data is stored as Pandas Dataframes or Series so get comfortable with that. 
+The SignalManager class is the main class used for managing multi-channel time series signals and events in those signals. It has a number of useful functions for loading, splicing, controlling timing ect based on events, and for aligning the data with event epochs in the first place. See the docs folder for the API for this class. It also provides automatic conversion of file format from .edf or .fiff to .hd5. Most of the data is stored as Pandas Dataframes or Series so get comfortable with that. 
 
 Signal data
 ------------
