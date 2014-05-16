@@ -41,16 +41,15 @@ A key part of the event storage is the management of event codes. In the example
 
 The SignalManager also maintains a private dictionary called events key. This was intended to allow for the easier relation between event names a numbers. It has not been fully implemented as the simple convention of uniquely numbering each class of event has sufficed. This may be something you wish to revisit in future however. 
 
+----------------------------------------------------------------------------------
 
-TODO:
+TODO
+------
+
   - Full implementation of {label:eventKey} mapping
   
----------------------------------------
-
-Notes:
+Notes
+------
 
 - While some effort was made to keep this code general, it was ultimately written with a specific project in mind. However, I hope it may provide some use and it should still be straightforward to adapt. 
-
-----------------------------------------
-
-Please also refer to to the accompanying license before using any of this code.
+- Please also refer to to the accompanying license before using any of this code.
