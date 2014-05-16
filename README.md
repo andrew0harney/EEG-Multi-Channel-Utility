@@ -19,7 +19,7 @@ At load time the SignalManager allows for the averaging across channels, as a fo
 
 TODO:
 
-  - More efficent reading and writing of data in pandas
+  - More efficient reading and writing of data in pandas
   - Selection of data from disk based on blocks
 
 
@@ -35,7 +35,7 @@ In addition the other major data the class manages an experimental log, which is
 
 To begin with, the experimental times you have may not match due to differences in timing clocks ect. The SignalManager has an optional parameter (offsets) that specifies an offset for the times in each block (if you don’t plan on offsetting blocks in the experiment, then the block variable obviously isn’t important). It also has a parameter to output a new log file containing the corrected log times for future use.
 
-This is a primative way of shifting the timing of a number of events, and if instead the timing of up and down events from an independent channel is to be more precisely configured, then this method will not be suitable. For such a set up you will need to edit the times in the event log directly. 
+This is a primitive way of shifting the timing of a number of events, and if instead the timing of up and down events from an independent channel is to be more precisely configured, then this method will not be suitable. For such a set up you will need to edit the times in the event log directly. 
 
 A key part of the event storage is the management of event codes. In the example data (and private scripts) the independent photodiode signals the beginning of a block via a long on pulse followed by a long off. These are encoded as 0 and 1 respectively in the log file. Note that by default the SignalManager will look for 0 and 1 to signal the beginning of the block. If there are no blocks in your data then you can just put a false 0 row followed by a 1 row indicating the start of the experiment (this is done in the example csv provided). Also note that block start times given through the API start at the beginning of the long off.
 
