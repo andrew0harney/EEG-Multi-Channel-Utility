@@ -11,7 +11,7 @@ logger = logging.getLogger('__GridUtils__')
 __author__ = 'Andrew O\'Harney'
 
 """Normalisation Functions"""
-def meanDesign(numPoints,events):
+def meanDesign(numPoints,events,longest=None):
     """Calculates the mean on columns of the full events matrix
     Keyword Arguments:
     numPoints -- Number of encoding columns
@@ -20,11 +20,11 @@ def meanDesign(numPoints,events):
     designMean = np.zeros(numPoints)
     N = 0
     for X,times in events:
-        designMean += np.sum(X[:self.__longestEvent__,:],axis=0)
+        designMean += np.sum(X[:longest,:],axis=0)
         N += len(times)
     return designMean / N
 
-def l1Norm(numPoints,events):
+def l1Norm(numPoints,events,longest=None):
     """Calculates the l1 normalisation parameter on columns of the design matrix
     Keyword Arguments:
     numPoints -- Number of encoding columns
@@ -32,10 +32,10 @@ def l1Norm(numPoints,events):
     logger.info('Calculating l1Norm')
     l1 = np.zeros(numPoints)
     for X,_ in events:
-        l1 += np.sum(np.abs(X[:self.__longestEvent__,:]),axis=0)    
+        l1 += np.sum(np.abs(X[:longest,:]),axis=0)    
     return np.sqrt(l1)
 
-def l2Norm(numPoints,events):
+def l2Norm(numPoints,events,longest=None):
     """L2 norm for real valued event matrix
     Keyword Arguments:
     numPoints -- Number of encoding columns
@@ -44,10 +44,10 @@ def l2Norm(numPoints,events):
     logger.info('Calculating l2Norm')
     l2 = np.zeros(numPoints)
     for X,_ in events:
-        l2 += np.sum(X[:self.__longestEvent__,:]**2,axis=0)    
+        l2 += np.sum(X[:longest:]**2,axis=0)    
     return np.sqrt(l2)
     
-def varDesign(numPoints,events,mean):
+def varDesign(numPoints,events,mean,longest=None):
     """Calculates variance on columns of design matrix
     Keyword Arguments:
     numPoints -- Number of encoding columns
