@@ -19,7 +19,7 @@ sig3 = np.hstack([np.sin(10*x),np.sin(10*x),np.sin(40*x),np.sin(40*x)])
 sig = np.array([sig1,sig2,sig3])
 
 dataName= 'PeriodicSTFT'
-NewBrain.save_hdf(sig, times, ['s1','s2','s3'],base_file_name=dataName)
+SignalManager.save_hdf(sig, times, ['s1','s2','s3'],base_file_name=dataName)
 events = np.vstack((times,times+0.1,np.zeros(len(times)))).T
 events = pd.DataFrame(events,columns=['pulse.on','pulse.off','event.code'])
 events.to_csv(dataName+'test_events.csv',columns=['pulse.on','pulse.off','event.code'],delimeter='\t')
@@ -28,7 +28,7 @@ events.to_csv(dataName+'test_events.csv',columns=['pulse.on','pulse.off','event.
 
 dataName= 'PeriodicSTFT'
 fs = 500
-grid = NewBrain(dataName,log_file=dataName+'test_events.csv')
+grid = SignalManager(dataName,log_file=dataName+'test_events.csv')
 grid.set_wd(['s1','s2','s3'])
 
 em = grid.event_matrix()
