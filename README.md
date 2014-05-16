@@ -43,9 +43,7 @@ The SignalManager also maintains a private dictionary called events key. This wa
 Once the event log has been properly aligned to the private Dataframe __signals will contain an event matrix that can be retrieved through the API using em(). This returns a dataframe which you can manipulate like any pandas Dataframe in order to select events of interest. This dataframe will contain all attributes specified for events in the log file. Most of the API for retreiving timing information about the data (such as how long it lasted, a full time vector of the event, splicing signals based on epochs of interest) is done by passing an event/events to the appropriate functions. Likewise utility functions also generally work by passing the SignalManager and set of events you wish to operate on as parameters.  
 
 
-TODO
-------
-
+TODO:
   - Full implementation of {label:eventKey} mapping
   
 --------------------------------------------------------------------------------------------------------------------------------------------
