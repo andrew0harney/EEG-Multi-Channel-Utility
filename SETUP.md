@@ -1,7 +1,7 @@
  Environment 
+(To those who pick up the project...whoever you may be!)
 ------------------------
 
-(To those who pick up the project...whoever you may be!)
 
 All code was written in Eclipse with the pydev plugin.
 The Enthought Canopoy python distribution was used, although other environments such as anaconda could work equally as well. 
