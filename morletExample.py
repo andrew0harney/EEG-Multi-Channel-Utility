@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import tables
 import pandas as pd
-from SignalManager import SignalManeger
+from SignalManager import SignalManager
 from gridFT import calcFFT, plot_morlet,morlet
 import pickle 
 
@@ -17,13 +17,13 @@ sig = np.array([sig1,sig2])
 
 
 dataName= 'PeriodicMorlet'
-NewBrain.save_hdf(sig, times, ['s1','s2'],base_file_name=dataName)
+SignalManager.save_hdf(sig, times, ['s1','s2'],base_file_name=dataName)
 events = np.vstack((times,times+0.1,np.zeros(len(times)))).T
 events = pd.DataFrame(events,columns=['pulse.on','pulse.off','event.code'])
 events.to_csv(dataName+'Test_events',columns=['pulse.on','pulse.off','event.code'])
 
 grid = NewBrain(dataName,log_file=dataName+'Test_events')
-grid.set_wd(['s1','s2'])
+grid.set_wdSignalManager
 blocks = pd.DataFrame(np.array([[1,1.9995],[1,1.9995]]),columns=['pulse.on','pulse.off'])
 isi = pd.DataFrame(np.array([[0,0.9995],[0,0.9995]]),columns=['pulse.on','pulse.off'])
 
