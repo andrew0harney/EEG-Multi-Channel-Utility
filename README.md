@@ -13,7 +13,7 @@ The class maintains the majority of information about the grid signal through th
   - channels : A Series of channel names
   - fs : the sample frequency
 
-At instantiation, all data will reside on disk. It will be up to you to manage what you want to load into memory. This is done by controlling the working data (__wd) and working channels (__wc) through the API.
+At instantiation, all data will reside on disk. It will be up to you to manage what you want to load into memory. This is done by controlling the working data (__wd) and working channels (__wc) through the API, mainly using set_wd(). The data can then be used and sliced from via wd()
 
 At load time the SignalManager allows for the averaging across channels, as a form of detrending. It allows you to specify the channels that the average will be calculated from and the channels that it should be applied to. These respective sets are held in the private variables __currentMeanCalcChans and __currentMeanApplyChans. These will be managed appropriately with the removal of a signal from the data.
 
@@ -21,7 +21,6 @@ TODO:
 
   - More efficient reading and writing of data in pandas
   - Selection of data from disk based on blocks
-
 
 Event Data
 ------------
@@ -40,6 +39,8 @@ This is a primitive way of shifting the timing of a number of events, and if ins
 A key part of the event storage is the management of event codes. In the example data (and private scripts) the independent photodiode signals the beginning of a block via a long on pulse followed by a long off. These are encoded as 0 and 1 respectively in the log file. Note that by default the SignalManager will look for 0 and 1 to signal the beginning of the block. If there are no blocks in your data then you can just put a false 0 row followed by a 1 row indicating the start of the experiment (this is done in the example csv provided). Also note that block start times given through the API start at the beginning of the long off.
 
 The SignalManager also maintains a private dictionary called events key. This was intended to allow for the easier relation between event names a numbers. It has not been fully implemented as the simple convention of uniquely numbering each class of event has sufficed. This may be something you wish to revisit in future however. 
+
+Once the event log has been properly aligned to the private Dataframe __signals will contain an event matrix that can be retrieved through the API using em(). This returns a dataframe which you can manipulate like any pandas Dataframe in order to select events of interest. This dataframe will contain all attributes specified for events in the log file. Most of the API for retreiving timing information about the data (such as how long it lasted, a full time vector of the event, splicing signals based on epochs of interest) is done by passing an event/events to the appropriate functions. Likewise utility functions also generally work by passing the SignalManager and set of events you wish to operate on as parameters.  
 
 ----------------------------------------------------------------------------------
 
