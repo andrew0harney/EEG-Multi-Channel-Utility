@@ -6,7 +6,7 @@
 All code was written in Eclipse with the pydev plugin.
 The Enthought Canopoy python distribution was used, although other environments such as anaconda could work equally as well. 
 
-I also highly recommend adding your python package lib to your PYTHONPATH. 
+I highly recommend adding your python package lib to your PYTHONPATH. 
 Simply add "export PYTHONPATH=$PYTHONPATH:~/Enthought/Canopy_64bit/User/bin" to your .bashrc
 
 Install pydev in Eclipse:
