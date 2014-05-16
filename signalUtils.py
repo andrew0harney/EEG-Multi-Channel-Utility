@@ -11,57 +11,52 @@ logger = logging.getLogger('__GridUtils__')
 __author__ = 'Andrew O\'Harney'
 
 """Normalisation Functions"""
-def meanDesign(self,events):
+def meanDesign(numPoints,events):
     """Calculates the mean on columns of the full events matrix
     Keyword Arguments:
-    events -- Events to find mean signal of"""
+    numPoints -- Number of encoding columns
+    events -- Iterable returning design for each event"""
     logger.info('Calculating design mean')
-    designMean = np.zeros(self.nPoints())
-    design = self.__iterX__(events)
+    designMean = np.zeros(numPoints)
     N = 0
-    for X,times in design:
+    for X,times in events:
         designMean += np.sum(X[:self.__longestEvent__,:],axis=0)
         N += len(times)
     return designMean / N
 
-def l1Norm(self,events):
+def l1Norm(numPoints,events):
     """Calculates the l1 normalisation parameter on columns of the design matrix
     Keyword Arguments:
-    events -- Events to find mean signal of"""
-    
+    numPoints -- Number of encoding columns
+    events -- Iterable returning design for each event"""
     logger.info('Calculating l1Norm')
-    l1 = np.zeros(self.nPoints())
-    design = self.__iterX__(events)
-    for X,_ in design:
+    l1 = np.zeros(numPoints)
+    for X,_ in events:
         l1 += np.sum(np.abs(X[:self.__longestEvent__,:]),axis=0)    
     return np.sqrt(l1)
 
-def l2Norm(self,events):
+def l2Norm(numPoints,events):
     """L2 norm for real valued event matrix
     Keyword Arguments:
-    events -- Events to find mean signal of"""
+    numPoints -- Number of encoding columns
+    events -- Iterable returning design for each event"""
     
     logger.info('Calculating l2Norm')
-    l2 = np.zeros(self.nPoints())
-    design = self.__iterX__(events)
-    for X,_ in design:
+    l2 = np.zeros(numPoints)
+    for X,_ in events:
         l2 += np.sum(X[:self.__longestEvent__,:]**2,axis=0)    
     return np.sqrt(l2)
     
-def varDesign(self,events,mean=None):
+def varDesign(numPoints,events,mean):
     """Calculates variance on columns of design matrix
     Keyword Arguments:
+    numPoints -- Number of encoding columns
     events -- Events to find mean signal of
-    mean=None -- Mean of events (will be calculated if not supplied)"""
-    
-    if mean is None:
-        mean = self.meanDesign(events)
-
+    mean=None -- Mean of events"""
     logger.info('Calculating design variance')
-    designVar = np.zeros(self.nPoints())
-    design = self.__iterX__(events)
+    designVar = np.zeros(numPoints)
     N = 0
-    for X,times in design:
+    for X,times in events:
         designVar += np.sum((X[:self.__longestEvent__]-mean)**2,axis=0)
         N += len(times)
     return designVar / (N-1)
