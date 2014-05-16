@@ -9,7 +9,7 @@ Signal data
 The class maintains the majority of information about the grid signal through the private Dataframe __signal. This directly interfaces with the .hd5 to provide efficient disk/memory trade-off. Be careful to note that this means if more than one SignalManger is instantiated at a given time, then it will be modify the same data. Inspection of the hd5 or code shows that it has the __signal Dataframe following fields:
 
   - times : A time vector for each sample in the data
-  - data : this is the actual EEG data
+  - data : this is the multi channel data
   - channels : A Series of channel names
   - fs : the sample frequency
 
