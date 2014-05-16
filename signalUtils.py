@@ -57,7 +57,7 @@ def varDesign(numPoints,events,mean,longest=None):
     designVar = np.zeros(numPoints)
     N = 0
     for X,times in events:
-        designVar += np.sum((X[:self.__longestEvent__]-mean)**2,axis=0)
+        designVar += np.sum((X[:longest]-mean)**2,axis=0)
         N += len(times)
     return designVar / (N-1)
 
