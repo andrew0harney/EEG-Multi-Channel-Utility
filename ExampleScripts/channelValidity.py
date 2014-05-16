@@ -11,10 +11,12 @@ from matplotlib.backends.backend_pdf import PdfPages
 data_path = ##PATH TO DATA
 log_path =  #PATH TO LOG
 
+#Load Signals into memory
 grid = SignalManager(data_path,log_file=log_path)
 baseChannels = [chan for chan in grid.channels()]
 grid.set_wd(channels=baseChannels)
 
+#Plot the postive photodiode. For our data this will typically be 'C127' or 'C128' (but refer to experimental notes)
 plt.plot(grid.wd(channels=['C127'])['C127'])
 blocks = grid.blocks()
 em=grid.event_matrix()
